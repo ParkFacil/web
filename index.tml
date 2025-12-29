@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Control de Estacionamiento</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+/* ====== FORMATO TERMICO 58MM ====== */
+body{
+  font-family: monospace;
+  background:#f5f7fa;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+
+.card{
+  background:#fff;
+  padding:6px;
+  border-radius:6px;
+  width:58mm;
+  box-shadow:0 0 5px rgba(0,0,0,.15);
+}
+
+h1{
+  text-align:center;
+  font-size:14px;
+  margin:4px 0;
+}
+
+label{
+  font-size:12px;
+  font-weight:bold;
+}
+
+input,button{
+  width:100%;
+  padding:6px;
+  margin-top:4px;
+  font-size:12px;
+}
+
+button{
+  border:none;
+  border-radius:4px;
+  color:#fff;
+  cursor:pointer;
+}
+
+#btnIniciar{background:#2563eb;}
+#btnDetener{background:#dc2626;}
+#btnBuscar{background:#6b7280;}
+
+.resultado{
+  margin-top:6px;
+  background:#fff;
+  padding:4px;
+  font-size:12px;
+}
+
+hr{
+  border:none;
+  border-top:1px dashed #000;
+  margin:4px 0;
+}
+
+.sugerencias{
+  border:1px solid #ddd;
+  border-radius:4px;
+  font-size:12px;
+}
+
+.sugerencias div{
+  padding:4px;
+  cursor:pointer;
+}
+
+.sugerencias div:hover{
+  background:#e5e7eb;
+}
+
+/* ====== IMPRESION ====== */
+@media print{
+  body{background:#fff;}
+  input,button,label,h1{display:none;}
+  .card{box-shadow:none;}
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+
+<h1>PARKFACIL</h1>
+
+<label>Patente</label>
+<input id="patente" placeholder="CX-PY-95" maxlength="8">
+<div id="sugerencias" class="sugerencias" style="display:none"></div>
+
+<button id="btnIniciar">Iniciar estadía</button>
+<button id="btnDetener">Detener estadía</button>
+<button id="btnBuscar">Buscar patente</button>
+
+<div id="resultado" class="resultado" style="display:none"></div>
+
+</div>
+
+<script>
+// ===== CONFIG =====
+var VALOR_POR_MINUTO = 30;
+var IVA = 0.19;
+
+// ===== FORMATO PATENTE =====
+var inputPatente = document.getElementById('patente');
+inputPatente.addEventListener('input', function () {
+  var raw = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  var out = raw.substring(0,2);
+  if(raw.length>2) out += '-' + raw.substring(2,4);
+  if(raw.length>4) out += '-' + raw.substring(4,6);
+  this.value = out;
+  buscarSugerencias();
+});
+
+// ===== BOTONES =====
+document.getElementById('btnIniciar').addEventListener('click', iniciarEstadia);
+document.getElementById('btnDetener').addEventListener('click', detenerEstadia);
+document.getElementById('btnBuscar').addEventListener('click', buscarPatente);
+
+// ===== TICKET 58MM =====
+function imprimirTicket(titulo, lineas){
+  var res = document.getElementById('resultado');
+  res.style.display = 'block';
+
+  var html = `
+    <div>
+      <center><b>${titulo}</b></center>
+      <center>PARKFACIL</center>
+      <center>--------------------</center>
+  `;
+
+  lineas.forEach(l=>{
+    html += `<div>${l}</div>`;
+  });
+
+  html += `
+      <center>--------------------</center>
+      <center>Gracias por su visita</center>
+    </div>
+  `;
+
+  res.innerHTML = html;
+}
+
+// ===== INICIAR =====
+function iniciarEstadia(){
+  var patente = inputPatente.value;
+  if(!/^[A-Z]{2}-[A-Z]{2}-[0-9]{2}$/.test(patente)){
+    alert('Patente inválida');
+    return;
+  }
+
+  var entrada = new Date();
+  localStorage.setItem(patente, JSON.stringify({entrada: entrada.toISOString()}));
+
+  imprimirTicket('TICKET DE ENTRADA',[
+    'Patente: ' + patente,
+    'Fecha: ' + entrada.toLocaleDateString(),
+    'Hora:  ' + entrada.toLocaleTimeString()
+  ]);
+}
+
+// ===== DETENER =====
+function detenerEstadia(){
+  var patente = inputPatente.value;
+  var data = localStorage.getItem(patente);
+  if(!data){
+    alert('Patente no encontrada');
+    return;
+  }
+
+  var entrada = new Date(JSON.parse(data).entrada);
+  var salida = new Date();
+  var minutos = Math.max(1, Math.floor((salida-entrada)/60000));
+  var subtotal = minutos * VALOR_POR_MINUTO;
+  var iva = Math.round(subtotal * IVA);
+  var total = subtotal + iva;
+
+  imprimirTicket('TICKET DE SALIDA',[
+    'Patente: ' + patente,
+    'Entrada: ' + entrada.toLocaleString(),
+    'Salida:  ' + salida.toLocaleString(),
+    'Minutos: ' + minutos,
+    'Valor/min: $' + VALOR_POR_MINUTO,
+    'Subtotal: $' + subtotal,
+    'IVA 19%:  $' + iva,
+    'TOTAL:    $' + total
+  ]);
+
+  localStorage.removeItem(patente);
+}
+
+// ===== BUSCAR =====
+function buscarPatente(){
+  var q = inputPatente.value.replace(/-/g,'');
+  if(q.length < 2){
+    alert('Ingrese al menos 2 caracteres');
+    return;
+  }
+
+  var keys = Object.keys(localStorage)
+    .filter(k => k.replace(/-/g,'').startsWith(q));
+
+  if(keys.length === 1){
+    mostrarTiempo(keys[0]);
+    return;
+  }
+
+  if(keys.length === 0){
+    alert('Sin resultados');
+    return;
+  }
+
+  alert('Encontradas:\n' + keys.join('\n'));
+}
+
+// ===== SUGERENCIAS =====
+function buscarSugerencias(){
+  var q = inputPatente.value.replace(/-/g,'');
+  var box = document.getElementById('sugerencias');
+  box.innerHTML='';
+
+  if(q.length < 2){
+    box.style.display='none';
+    return;
+  }
+
+  var keys = Object.keys(localStorage)
+    .filter(k => k.replace(/-/g,'').startsWith(q));
+
+  if(keys.length === 0){
+    box.style.display='none';
+    return;
+  }
+
+  keys.forEach(function(p){
+    var d = document.createElement('div');
+    d.textContent = p;
+    d.onclick = function(){
+      inputPatente.value = p;
+      box.style.display='none';
+      mostrarTiempo(p);
+    };
+    box.appendChild(d);
+  });
+
+  box.style.display='block';
+}
+
+// ===== MOSTRAR TIEMPO =====
+function mostrarTiempo(p){
+  var entrada = new Date(JSON.parse(localStorage.getItem(p)).entrada);
+  var minutos = Math.floor((new Date()-entrada)/60000);
+
+  imprimirTicket('ESTADO DE ESTADÍA',[
+    'Patente: ' + p,
+    'Entrada: ' + entrada.toLocaleString(),
+    'Tiempo: ' + minutos + ' min'
+  ]);
+}
+</script>
+</body>
+</html>
