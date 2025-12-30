@@ -6,12 +6,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{margin:0;font-family:Arial;background:#f1f5f9}
-.sidebar{width:250px;background:#0f172a;color:#fff;position:fixed;height:100vh}
+.sidebar{width:240px;background:#0f172a;color:#fff;position:fixed;height:100vh}
 .sidebar h2{margin:0;padding:16px;border-bottom:1px solid #334155}
 .sidebar div{padding:14px 16px;cursor:pointer}
 .sidebar div:hover{background:#1e293b}
-.content{margin-left:250px;padding:20px}
-.card{background:#fff;padding:20px;border-radius:10px;max-width:750px}
+.content{margin-left:240px;padding:20px}
+.card{background:#fff;padding:20px;border-radius:10px;max-width:800px}
 .hidden{display:none}
 input,select,button{width:100%;padding:10px;margin-top:8px}
 button{border:none;border-radius:6px;color:#fff}
@@ -21,9 +21,6 @@ button{border:none;border-radius:6px;color:#fff}
 .gris{background:#6b7280}
 table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{border-bottom:1px solid #ddd;padding:6px}
-.ticket{width:260px;border:1px dashed #000;padding:10px;margin-top:12px;font-size:12px}
-.ticket h3{text-align:center;margin:4px}
-.c{text-align:center}
 </style>
 </head>
 
@@ -40,7 +37,6 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 
 <div class="content">
 
-<!-- LOGIN -->
 <div id="login" class="card">
   <h3>Login</h3>
   <input id="lUser" placeholder="Usuario">
@@ -49,48 +45,34 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
   <div id="msg"></div>
 </div>
 
-<!-- OPERACION -->
 <div id="operacion" class="card hidden">
   <h3>Operación</h3>
   <div id="info"></div>
-
   <input id="patente" placeholder="CX-PY-95">
   <button class="azul" onclick="iniciar()">Iniciar estadía</button>
-
-  <h4>Patentes activas</h4>
   <select id="lista"></select>
-  <button class="rojo" onclick="detener()">Detener estadía</button>
-
-  <div id="ticket"></div>
+  <button class="rojo" onclick="detener()">Detener</button>
 </div>
 
-<!-- OPERADORES -->
 <div id="usuarios" class="card hidden">
   <h3>Operadores</h3>
   <input id="uUser" placeholder="Usuario">
   <input id="uPass" placeholder="Clave">
   <select id="uSector"></select>
   <button class="verde" onclick="crearOperador()">Crear operador</button>
-
   <table>
-    <thead>
-      <tr><th>Usuario</th><th>Sector</th><th>Estado</th><th></th></tr>
-    </thead>
+    <thead><tr><th>Usuario</th><th>Sector</th><th>Estado</th></tr></thead>
     <tbody id="tablaUsuarios"></tbody>
   </table>
 </div>
 
-<!-- SECTORES -->
 <div id="sectores" class="card hidden">
   <h3>Sectores</h3>
-  <input id="sId" placeholder="ID (ej: A)">
+  <input id="sId" placeholder="ID">
   <input id="sNombre" placeholder="Nombre">
   <button class="verde" onclick="crearSector()">Crear sector</button>
-
   <table>
-    <thead>
-      <tr><th>ID</th><th>Nombre</th><th>Estado</th><th></th></tr>
-    </thead>
+    <thead><tr><th>ID</th><th>Nombre</th><th>Estado</th><th></th></tr></thead>
     <tbody id="tablaSectores"></tbody>
   </table>
 </div>
@@ -98,29 +80,21 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 </div>
 
 <script>
-/* ===== CONFIG ===== */
-const EMPRESA='EMPRESA_1';
-const TARIFA=30;
-const get=k=>JSON.parse(localStorage.getItem(k)||'[]');
-const set=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+/* ===== STORAGE ===== */
+const G = k => JSON.parse(localStorage.getItem(k) || '[]');
+const S = (k,v) => localStorage.setItem(k, JSON.stringify(v));
 
-/* ===== INIT ===== */
+/* ===== INIT LIMPIO ===== */
 (function(){
   if(!localStorage.getItem('usuarios')){
-    set('usuarios',[{
-      usuario:'admin',clave:'admin',rol:'admin',
-      sector:'ALL',empresa:EMPRESA,activo:true
-    }]);
+    S('usuarios',[{usuario:'admin',clave:'admin',rol:'admin',sector:'ALL',activo:true}]);
   }
   if(!localStorage.getItem('sectores')){
-    set('sectores',[
-      {id:'A',nombre:'Sector A',activo:true},
-      {id:'B',nombre:'Sector B',activo:true}
-    ]);
+    S('sectores',[]);
   }
 })();
 
-let session=null;
+let sesion=null;
 
 /* ===== UI ===== */
 function show(id){
@@ -131,155 +105,104 @@ function show(id){
 
 /* ===== LOGIN ===== */
 function login(){
-  const u=get('usuarios').find(x=>
-    x.usuario===lUser.value && x.clave===lPass.value && x.activo
-  );
-  if(!u){msg.innerText='Credenciales inválidas';return;}
-  session=u;
+  const u = G('usuarios').find(x=>x.usuario===lUser.value && x.clave===lPass.value && x.activo);
+  if(!u){msg.innerText='Error';return;}
+  sesion=u;
   mOp.classList.remove('hidden');
   mOut.classList.remove('hidden');
-  if(u.rol==='admin'){
-    mUsr.classList.remove('hidden');
-    mSec.classList.remove('hidden');
-  }
-  info.innerText=`Usuario: ${u.usuario} | Sector: ${u.sector}`;
-  cargarSectoresSelect();
-  cargarUsuarios();
-  cargarSectores();
-  cargarPatentes();
+  if(u.rol==='admin'){mUsr.classList.remove('hidden');mSec.classList.remove('hidden');}
+  info.innerText=`${u.usuario} | Sector ${u.sector}`;
+  refrescarTodo();
   show('operacion');
 }
-
 function logout(){location.reload();}
 
 /* ===== SECTORES ===== */
 function crearSector(){
-  const sectores=get('sectores');
-  if(sectores.some(s=>s.id===sId.value)){
-    alert('Sector ya existe');return;
-  }
+  const sectores=G('sectores');
+  if(sectores.find(s=>s.id===sId.value)) return alert('Existe');
   sectores.push({id:sId.value,nombre:sNombre.value,activo:true});
-  set('sectores',sectores);
-  cargarSectores();
-  cargarSectoresSelect();
+  S('sectores',sectores);
+  refrescarTodo();
 }
-
 function toggleSector(id){
-  const sectores=get('sectores');
+  const sectores=G('sectores');
   const s=sectores.find(x=>x.id===id);
   s.activo=!s.activo;
-  set('sectores',sectores);
-  cargarSectores();
-  cargarSectoresSelect();
+  S('sectores',sectores);
+  refrescarTodo();
 }
-
 function cargarSectores(){
   tablaSectores.innerHTML='';
-  get('sectores').forEach(s=>{
+  G('sectores').forEach(s=>{
     tablaSectores.innerHTML+=`
-    <tr>
-      <td>${s.id}</td>
-      <td>${s.nombre}</td>
-      <td>${s.activo?'Activo':'Inactivo'}</td>
-      <td><button onclick="toggleSector('${s.id}')">Toggle</button></td>
-    </tr>`;
-  });
-}
-
-function cargarSectoresSelect(){
-  uSector.innerHTML='';
-  get('sectores').filter(s=>s.activo).forEach(s=>{
-    uSector.innerHTML+=`<option value="${s.id}">${s.nombre}</option>`;
+      <tr>
+        <td>${s.id}</td><td>${s.nombre}</td>
+        <td>${s.activo?'Activo':'Inactivo'}</td>
+        <td><button onclick="toggleSector('${s.id}')">Toggle</button></td>
+      </tr>`;
   });
 }
 
 /* ===== OPERADORES ===== */
 function crearOperador(){
-  const usuarios=get('usuarios');
-  if(usuarios.some(u=>u.usuario===uUser.value)){
-    alert('Usuario existe');return;
-  }
-  usuarios.push({
-    usuario:uUser.value,clave:uPass.value,rol:'operador',
-    sector:uSector.value,empresa:EMPRESA,activo:true
-  });
-  set('usuarios',usuarios);
-  cargarUsuarios();
-}
+  const sectores=G('sectores').filter(s=>s.activo);
+  if(!sectores.find(s=>s.id===uSector.value)) return alert('Sector inválido');
 
+  const usuarios=G('usuarios');
+  usuarios.push({usuario:uUser.value,clave:uPass.value,rol:'operador',sector:uSector.value,activo:true});
+  S('usuarios',usuarios);
+  refrescarTodo();
+}
 function cargarUsuarios(){
   tablaUsuarios.innerHTML='';
-  get('usuarios').filter(u=>u.rol==='operador').forEach(u=>{
+  G('usuarios').filter(u=>u.rol==='operador').forEach(u=>{
     tablaUsuarios.innerHTML+=`
-    <tr>
-      <td>${u.usuario}</td>
-      <td>${u.sector}</td>
-      <td>${u.activo?'Activo':'Bloqueado'}</td>
-      <td><button onclick="toggleUser('${u.usuario}')">Bloq</button></td>
-    </tr>`;
+      <tr><td>${u.usuario}</td><td>${u.sector}</td><td>${u.activo?'OK':'OFF'}</td></tr>`;
   });
-}
-
-function toggleUser(user){
-  const usuarios=get('usuarios');
-  const u=usuarios.find(x=>x.usuario===user);
-  u.activo=!u.activo;
-  set('usuarios',usuarios);
-  cargarUsuarios();
 }
 
 /* ===== OPERACION ===== */
 function iniciar(){
-  const sector=session.sector;
-  if(sector!=='ALL' && !get('sectores').find(s=>s.id===sector && s.activo)){
-    alert('Sector inactivo');return;
+  if(sesion.sector!=='ALL'){
+    const s=G('sectores').find(x=>x.id===sesion.sector && x.activo);
+    if(!s) return alert('Sector inactivo');
   }
-  localStorage.setItem('est_'+patente.value,JSON.stringify({
+  S('est_'+patente.value,{
     patente:patente.value,
-    sector,empresa:EMPRESA,
-    operador:session.usuario,
+    sector:sesion.sector,
     entrada:Date.now()
-  }));
+  });
   cargarPatentes();
 }
-
 function cargarPatentes(){
   lista.innerHTML='';
   Object.keys(localStorage).filter(k=>k.startsWith('est_')).forEach(k=>{
     const e=JSON.parse(localStorage.getItem(k));
-    if(session.sector==='ALL'||e.sector===session.sector)
+    if(sesion.sector==='ALL'||e.sector===sesion.sector){
       lista.innerHTML+=`<option value="${k}">${e.patente}</option>`;
+    }
   });
 }
-
 function detener(){
-  const k=lista.value;if(!k)return;
+  const k=lista.value;
+  if(!k) return;
   const e=JSON.parse(localStorage.getItem(k));
-  if(session.sector!=='ALL' && e.sector!==session.sector){
-    alert('Fuera de su sector');return;
-  }
-  const min=Math.max(1,Math.floor((Date.now()-e.entrada)/60000));
-  const total=min*TARIFA;
-  const txt=`Patente ${e.patente} Total $${total}`;
-
-  ticket.innerHTML=`
-  <div class="ticket">
-    <h3>PARKFACIL</h3>
-    <div class="c">${e.patente}</div>
-    <div class="c">Sector ${e.sector}</div>
-    <div class="c">$${total}</div>
-    <div class="c">QR:${btoa(txt).slice(0,20)}</div>
-    <hr>
-    <button class="verde" onclick="wa('${txt}')">WhatsApp</button>
-    <button class="azul" onclick="mail('${txt}')">Correo</button>
-  </div>`;
+  if(sesion.sector!=='ALL' && e.sector!==sesion.sector) return alert('Fuera de sector');
   localStorage.removeItem(k);
   cargarPatentes();
 }
 
-/* ===== ENVIOS ===== */
-function wa(t){window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');}
-function mail(t){location.href='mailto:?subject=Ticket&body='+encodeURIComponent(t);}
+/* ===== REFRESH ===== */
+function refrescarTodo(){
+  cargarSectores();
+  uSector.innerHTML='';
+  G('sectores').filter(s=>s.activo).forEach(s=>{
+    uSector.innerHTML+=`<option value="${s.id}">${s.nombre}</option>`;
+  });
+  cargarUsuarios();
+  cargarPatentes();
+}
 </script>
 </body>
 </html>
