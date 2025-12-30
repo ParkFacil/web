@@ -3,28 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <title>PARKFACIL</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{margin:0;font-family:Arial;background:#f1f5f9}
-.sidebar{width:220px;background:#0f172a;color:#fff;position:fixed;height:100vh}
-.sidebar h2{margin:0;padding:16px;font-size:18px;border-bottom:1px solid #334155}
+.sidebar{width:230px;background:#0f172a;color:#fff;position:fixed;height:100vh}
+.sidebar h2{padding:16px;margin:0;border-bottom:1px solid #334155}
 .sidebar div{padding:14px 16px;cursor:pointer}
 .sidebar div:hover{background:#1e293b}
-.content{margin-left:220px;padding:20px}
+.content{margin-left:230px;padding:20px}
+.card{background:#fff;padding:20px;border-radius:10px;max-width:600px}
 .hidden{display:none}
-.card{background:#fff;padding:20px;border-radius:10px;max-width:500px}
 input,select,button{width:100%;padding:10px;margin-top:8px}
-button{border:none;border-radius:6px;color:#fff;cursor:pointer}
+button{border:none;border-radius:6px;color:#fff}
 .azul{background:#2563eb}
 .verde{background:#16a34a}
 .rojo{background:#dc2626}
 .gris{background:#6b7280}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border-bottom:1px solid #ddd;padding:6px}
-.ticket{width:220px;margin-top:15px;border:1px dashed #000;padding:8px;font-size:12px}
-.ticket h3{text-align:center;margin:4px 0}
+.ticket{width:240px;border:1px dashed #000;padding:10px;margin-top:10px;font-size:12px}
+.ticket h3{text-align:center;margin:4px}
 .c{text-align:center}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+td,th{border-bottom:1px solid #ddd;padding:6px}
 </style>
 </head>
 
@@ -32,9 +31,9 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 
 <div class="sidebar">
   <h2>PARKFACIL</h2>
-  <div onclick="mostrar('login')">🔑 Login</div>
-  <div onclick="mostrar('operacion')" id="mOp" class="hidden">🚗 Operar</div>
-  <div onclick="mostrar('usuarios')" id="mUsr" class="hidden">👤 Operadores</div>
+  <div onclick="show('login')">🔑 Login</div>
+  <div onclick="show('operacion')" id="mOp" class="hidden">🚗 Operación</div>
+  <div onclick="show('usuarios')" id="mUsr" class="hidden">👤 Operadores</div>
   <div onclick="logout()" id="mOut" class="hidden">⏻ Logout</div>
 </div>
 
@@ -55,19 +54,18 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
   <div id="info"></div>
 
   <input id="patente" placeholder="CX-PY-95">
-  <button class="azul" onclick="iniciar()">Iniciar</button>
+  <button class="azul" onclick="iniciar()">Iniciar estadía</button>
 
-  <h4>Patentes activas</h4>
+  <h4>Buscar patente</h4>
   <select id="lista"></select>
-  <button class="rojo" onclick="detener()">Detener</button>
+  <button class="rojo" onclick="detener()">Detener estadía</button>
 
   <div id="ticket"></div>
 </div>
 
-<!-- USUARIOS -->
+<!-- OPERADORES -->
 <div id="usuarios" class="card hidden">
-  <h3>Operadores</h3>
-
+  <h3>Operadores (Empresa)</h3>
   <input id="uUser" placeholder="Usuario">
   <input id="uPass" placeholder="Clave">
   <select id="uSector">
@@ -77,7 +75,9 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
   <button class="verde" onclick="crearOperador()">Crear operador</button>
 
   <table>
-    <thead><tr><th>Usuario</th><th>Sector</th><th>Estado</th><th></th></tr></thead>
+    <thead>
+      <tr><th>Usuario</th><th>Sector</th><th>Estado</th><th></th></tr>
+    </thead>
     <tbody id="tabla"></tbody>
   </table>
 </div>
@@ -85,60 +85,73 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 </div>
 
 <script>
-/* === INIT === */
+/* ===== DATOS ===== */
+const EMPRESA_ID = 'EMPRESA_1';
+
+/* INIT */
 if(!localStorage.getItem('usuarios')){
   localStorage.setItem('usuarios',JSON.stringify([{
-    usuario:'admin',clave:'admin',rol:'admin',sector:'ALL',activo:true
+    usuario:'admin',clave:'admin',rol:'admin',
+    empresa:EMPRESA_ID,sector:'ALL',activo:true
   }]));
 }
 
-let usuarioActivo=null;
-const getU=()=>JSON.parse(localStorage.getItem('usuarios'));
-const setU=v=>localStorage.setItem('usuarios',JSON.stringify(v));
+let user=null;
+const U=()=>JSON.parse(localStorage.getItem('usuarios'));
+const S=v=>localStorage.setItem('usuarios',JSON.stringify(v));
 
-function mostrar(id){
+function show(id){
   ['login','operacion','usuarios'].forEach(x=>document.getElementById(x).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
 }
 
 /* LOGIN */
 function login(){
-  const u=getU().find(x=>x.usuario===lUser.value && x.clave===lPass.value && x.activo);
+  const u=U().find(x=>x.usuario===lUser.value && x.clave===lPass.value && x.activo);
   if(!u){msg.innerText='Credenciales inválidas';return;}
-  usuarioActivo=u;
+  user=u;
   mOp.classList.remove('hidden');
   mOut.classList.remove('hidden');
   if(u.rol==='admin') mUsr.classList.remove('hidden');
   info.innerText=`Usuario: ${u.usuario} | Sector: ${u.sector}`;
   cargarPatentes();
-  mostrar('operacion');
+  show('operacion');
 }
 
 /* LOGOUT */
-function logout(){
-  usuarioActivo=null;
-  location.reload();
-}
+function logout(){location.reload();}
 
 /* OPERADORES */
 function crearOperador(){
-  const arr=getU();
-  arr.push({usuario:uUser.value,clave:uPass.value,rol:'operador',sector:uSector.value,activo:true});
-  setU(arr);
+  const arr=U();
+  arr.push({
+    usuario:uUser.value,
+    clave:uPass.value,
+    rol:'operador',
+    empresa:EMPRESA_ID,
+    sector:uSector.value,
+    activo:true
+  });
+  S(arr);
   cargarTabla();
 }
+
 function cargarTabla(){
   tabla.innerHTML='';
-  getU().filter(x=>x.rol==='operador').forEach(o=>{
-    tabla.innerHTML+=`<tr>
-      <td>${o.usuario}</td><td>${o.sector}</td><td>${o.activo?'OK':'OFF'}</td>
+  U().filter(o=>o.rol==='operador' && o.empresa===EMPRESA_ID)
+  .forEach(o=>{
+    tabla.innerHTML+=`
+    <tr>
+      <td>${o.usuario}</td>
+      <td>${o.sector}</td>
+      <td>${o.activo?'Activo':'Bloqueado'}</td>
       <td><button onclick="bloq('${o.usuario}')">Bloq</button></td>
     </tr>`;
   });
 }
 function bloq(u){
-  const arr=getU(); const o=arr.find(x=>x.usuario===u);
-  o.activo=!o.activo; setU(arr); cargarTabla();
+  const arr=U();const o=arr.find(x=>x.usuario===u);
+  o.activo=!o.activo;S(arr);cargarTabla();
 }
 cargarTabla();
 
@@ -146,7 +159,8 @@ cargarTabla();
 function iniciar(){
   localStorage.setItem('est_'+patente.value,JSON.stringify({
     patente:patente.value,
-    sector:usuarioActivo.sector,
+    empresa:EMPRESA_ID,
+    sector:user.sector,
     entrada:Date.now()
   }));
   cargarPatentes();
@@ -156,16 +170,22 @@ function cargarPatentes(){
   lista.innerHTML='';
   Object.keys(localStorage).filter(k=>k.startsWith('est_')).forEach(k=>{
     const d=JSON.parse(localStorage.getItem(k));
-    if(usuarioActivo.sector==='ALL'||d.sector===usuarioActivo.sector)
+    if(d.empresa===EMPRESA_ID &&
+      (user.sector==='ALL'||d.sector===user.sector)){
       lista.innerHTML+=`<option value="${k}">${d.patente}</option>`;
+    }
   });
 }
 
 function detener(){
-  const k=lista.value; if(!k)return;
+  const k=lista.value;if(!k)return;
   const d=JSON.parse(localStorage.getItem(k));
   const min=Math.max(1,Math.floor((Date.now()-d.entrada)/60000));
   const total=min*30;
+
+  const texto=`Patente ${d.patente} - Total $${total}`;
+  const qr=btoa(texto).slice(0,20);
+
   ticket.innerHTML=`
   <div class="ticket">
     <h3>PARKFACIL</h3>
@@ -173,11 +193,21 @@ function detener(){
     <div class="c">Sector ${d.sector}</div>
     <div class="c">Min ${min}</div>
     <div class="c"><b>$${total}</b></div>
-    <div class="c">QR:${btoa(d.patente+Date.now()).slice(0,10)}</div>
-    <div class="c">Boleta electrónica</div>
+    <div class="c">QR:${qr}</div>
+    <hr>
+    <button class="verde" onclick="wa('${texto}')">WhatsApp</button>
+    <button class="azul" onclick="mail('${texto}')">Correo</button>
   </div>`;
   localStorage.removeItem(k);
   cargarPatentes();
+}
+
+/* ENVÍOS */
+function wa(t){
+  window.open(`https://wa.me/?text=${encodeURIComponent(t)}`);
+}
+function mail(t){
+  window.location=`mailto:?subject=Ticket PARKFACIL&body=${encodeURIComponent(t)}`;
 }
 </script>
 </body>
