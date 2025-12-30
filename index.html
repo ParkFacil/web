@@ -7,26 +7,26 @@
 <style>
 body{margin:0;font-family:Arial;background:#f5f7fa}
 .layout{display:flex;min-height:100vh}
-.sidebar{width:230px;background:#0f172a;color:#fff}
+.sidebar{width:220px;background:#0f172a;color:#fff}
 .brand{padding:16px;font-size:18px;border-bottom:1px solid #334155}
 .menu div{padding:14px 16px;cursor:pointer}
 .menu div:hover{background:#1e293b}
 .menu div.hidden{display:none}
 .content{flex:1;padding:24px}
-.seccion{display:none;max-width:900px}
+.seccion{display:none;max-width:800px}
 .seccion.activa{display:block}
-.card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,.1)}
+.card{background:#fff;padding:20px;border-radius:10px}
 input,select,button{width:100%;padding:10px;margin-top:8px}
 button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .azul{background:#2563eb}
 .verde{background:#16a34a}
 .rojo{background:#dc2626}
 .gris{background:#6b7280}
-.badge{padding:4px 8px;border-radius:6px;font-size:12px}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border-bottom:1px solid #ddd;padding:6px}
+.badge{padding:4px 6px;border-radius:4px;font-size:12px}
 .ok{background:#16a34a;color:#fff}
 .block{background:#dc2626;color:#fff}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 </style>
 </head>
 
@@ -37,8 +37,8 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
   <div class="brand">PARKFACIL</div>
   <div class="menu">
     <div onclick="show('login')">🔑 Login</div>
-    <div id="menuOperacion" class="hidden" onclick="show('operacion')">🚗 Operación</div>
-    <div id="menuOps" class="hidden" onclick="show('operadores')">👤 Operadores</div>
+    <div id="mOp" class="hidden" onclick="show('operacion')">🚗 Operación</div>
+    <div id="mAdm" class="hidden" onclick="show('usuarios')">👤 Usuarios</div>
   </div>
 </div>
 
@@ -47,18 +47,18 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <!-- ADMIN INICIAL -->
 <div id="bootstrap" class="seccion">
   <div class="card">
-    <h3>Crear Administrador Inicial</h3>
-    <input id="bNombre" placeholder="Nombre completo">
+    <h3>Administrador inicial</h3>
+    <input id="bNombre" placeholder="Nombre">
     <input id="bUsuario" placeholder="Usuario">
     <input id="bClave" type="password" placeholder="Clave">
-    <button class="verde" onclick="crearAdminInicial()">Crear administrador</button>
+    <button class="verde" onclick="crearAdmin()">Crear administrador</button>
   </div>
 </div>
 
 <!-- LOGIN -->
 <div id="login" class="seccion">
   <div class="card">
-    <h3>Ingreso</h3>
+    <h3>Login</h3>
     <input id="loginUser" placeholder="Usuario">
     <input id="loginPass" type="password" placeholder="Clave">
     <button class="verde" onclick="login()">Ingresar</button>
@@ -70,37 +70,34 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <div id="operacion" class="seccion">
   <div class="card">
     <h3>Operación</h3>
-    <div id="opInfo"></div>
+    <div id="info"></div>
     <input id="patente" placeholder="CX-PY-95">
-    <button class="azul" onclick="iniciar()">Iniciar estadía</button>
-    <button class="rojo" onclick="detener()">Detener estadía</button>
+    <button class="azul" onclick="iniciar()">Iniciar</button>
+    <button class="rojo" onclick="detener()">Detener</button>
     <div id="resultado"></div>
-    <div id="qr"></div>
   </div>
 </div>
 
-<!-- OPERADORES -->
-<div id="operadores" class="seccion">
+<!-- USUARIOS -->
+<div id="usuarios" class="seccion">
   <div class="card">
-    <h3>Gestión de Usuarios</h3>
-    <input id="opNombre" placeholder="Nombre completo">
-    <input id="opUsuario" placeholder="Usuario">
-    <input id="opClave" type="password" placeholder="Clave">
-    <select id="opRol">
+    <h3>Usuarios</h3>
+    <input id="uNombre" placeholder="Nombre">
+    <input id="uUsuario" placeholder="Usuario">
+    <input id="uClave" type="password" placeholder="Clave">
+    <select id="uRol">
       <option value="operador">Operador</option>
       <option value="admin">Admin</option>
     </select>
-    <select id="opSector"></select>
+    <select id="uSector">
+      <option value="1">Sector A</option>
+      <option value="2">Sector B</option>
+    </select>
     <button class="verde" onclick="crearUsuario()">Crear usuario</button>
 
     <table>
-      <thead>
-        <tr>
-          <th>Nombre</th><th>Usuario</th><th>Rol</th>
-          <th>Sector</th><th>Estado</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="tablaOps"></tbody>
+      <thead><tr><th>Usuario</th><th>Rol</th><th>Sector</th><th></th></tr></thead>
+      <tbody id="tabla"></tbody>
     </table>
   </div>
 </div>
@@ -111,108 +108,90 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <script>
 const g=k=>JSON.parse(localStorage.getItem(k)||'[]');
 const s=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-
-if(!g('sectores').length){
-  s('sectores',[{id:1,n:'Sector A'},{id:2,n:'Sector B'}]);
-}
-
-let operador=null;
-
-// FLUJO INICIAL
-if(g('ops').length===0){
-  show('bootstrap');
-}else{
-  show('login');
-}
+let activo=null;
 
 function show(id){
   document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
   document.getElementById(id).classList.add('activa');
 }
 
-// ADMIN INICIAL
-function crearAdminInicial(){
-  const ops=[{
-    id:Date.now(),
-    nombre:bNombre.value,
-    usuario:bUsuario.value,
-    clave:bClave.value,
-    rol:'admin',
-    sector:1,
-    activo:true
-  }];
-  s('ops',ops);
+if(g('usuarios').length===0){
+  show('bootstrap');
+}else{
   show('login');
 }
 
-// LOGIN
+function crearAdmin(){
+  s('usuarios',[{
+    id:1,nombre:bNombre.value,usuario:bUsuario.value,
+    clave:bClave.value,rol:'admin',sector:1,activo:true
+  }]);
+  show('login');
+}
+
 function login(){
-  const op=g('ops').find(o=>
-    o.usuario===loginUser.value &&
-    o.clave===loginPass.value &&
-    o.activo
+  const u=g('usuarios').find(x=>
+    x.usuario===loginUser.value &&
+    x.clave===loginPass.value &&
+    x.activo
   );
-  if(!op){ loginMsg.innerText='❌ Credenciales inválidas'; return; }
-
-  operador=op;
-  menuOperacion.classList.remove('hidden');
-  if(op.rol==='admin') menuOps.classList.remove('hidden');
+  if(!u){ loginMsg.innerText='Credenciales inválidas'; return; }
+  activo=u;
+  mOp.classList.remove('hidden');
+  if(u.rol==='admin') mAdm.classList.remove('hidden');
+  info.innerText=`${u.nombre} | ${u.rol} | Sector ${u.sector}`;
   show('operacion');
-  opInfo.innerText=`${op.nombre} | ${op.rol} | Sector ${op.sector}`;
 }
 
-// OPERACION
-function iniciar(){
-  if(!operador) return;
-  localStorage.setItem(patente.value,JSON.stringify({
-    entrada:Date.now(),sector:operador.sector,op:operador.usuario
-  }));
-}
-
-function detener(){
-  const d=JSON.parse(localStorage.getItem(patente.value));
-  if(!d||d.sector!==operador.sector) return alert('No autorizado');
-  const min=Math.max(1,Math.floor((Date.now()-d.entrada)/60000));
-  resultado.innerText=`Total $${min*30}`;
-  qr.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VALIDAR">`;
-  localStorage.removeItem(patente.value);
-}
-
-// USUARIOS
 function crearUsuario(){
-  if(operador.rol!=='admin') return;
-  const ops=g('ops');
-  ops.push({
+  if(activo.rol!=='admin') return;
+  const arr=g('usuarios');
+  arr.push({
     id:Date.now(),
-    nombre:opNombre.value,
-    usuario:opUsuario.value,
-    clave:opClave.value,
-    rol:opRol.value,
-    sector:+opSector.value,
+    nombre:uNombre.value,
+    usuario:uUsuario.value,
+    clave:uClave.value,
+    rol:uRol.value,
+    sector:+uSector.value,
     activo:true
   });
-  s('ops',ops);
+  s('usuarios',arr);
   cargarTabla();
 }
 
 function cargarTabla(){
-  tablaOps.innerHTML='';
-  g('ops').forEach(o=>{
-    tablaOps.innerHTML+=`
+  tabla.innerHTML='';
+  g('usuarios').forEach(u=>{
+    tabla.innerHTML+=`
       <tr>
-        <td>${o.nombre}</td><td>${o.usuario}</td>
-        <td>${o.rol}</td><td>${o.sector}</td>
-        <td>${o.activo?'Activo':'Bloqueado'}</td>
-        <td><button onclick="toggle(${o.id})">Toggle</button></td>
+        <td>${u.usuario}</td>
+        <td>${u.rol}</td>
+        <td>${u.sector}</td>
+        <td><button onclick="toggle(${u.id})">Bloq</button></td>
       </tr>`;
   });
 }
 function toggle(id){
-  const ops=g('ops');
-  const o=ops.find(x=>x.id===id);
-  o.activo=!o.activo;
-  s('ops',ops);
+  const arr=g('usuarios');
+  const u=arr.find(x=>x.id===id);
+  u.activo=!u.activo;
+  s('usuarios',arr);
   cargarTabla();
+}
+
+function iniciar(){
+  localStorage.setItem(patente.value,JSON.stringify({
+    entrada:Date.now(),
+    sector:activo.sector,
+    operador:activo.usuario
+  }));
+}
+function detener(){
+  const d=JSON.parse(localStorage.getItem(patente.value));
+  if(!d||d.sector!==activo.sector) return alert('No autorizado');
+  const min=Math.max(1,Math.floor((Date.now()-d.entrada)/60000));
+  resultado.innerText=`Total $${min*30} (QR se genera en backend/SUNMI)`;
+  localStorage.removeItem(patente.value);
 }
 </script>
 </body>
