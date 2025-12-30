@@ -39,6 +39,8 @@ button{
 #btnIniciar{background:#2563eb}
 #btnDetener{background:#dc2626}
 #btnBuscar{background:#6b7280}
+#btnWhatsapp{background:#25D366}
+#btnMail{background:#0f172a}
 
 .resultado{
   margin-top:16px;
@@ -52,7 +54,9 @@ button{
   border:1px solid #ddd;
   border-radius:6px;
   margin-top:6px;
-  display:none
+  display:none;
+  max-height:150px;
+  overflow-y:auto
 }
 .sugerencias div{
   padding:8px;
@@ -79,18 +83,24 @@ button{
 <button id="btnBuscar">Buscar patente</button>
 
 <div id="resultado" class="resultado"></div>
+
+<button id="btnWhatsapp" style="display:none">Enviar por WhatsApp</button>
+<button id="btnMail" style="display:none">Enviar por Email</button>
 </div>
 
 <script>
-// CONFIG
 const VALOR_POR_MINUTO = 30;
 const IVA = 0.19;
 
 const inputPatente = document.getElementById('patente');
 const resultado = document.getElementById('resultado');
 const lista = document.getElementById('listaPatentes');
+const btnWhatsapp = document.getElementById('btnWhatsapp');
+const btnMail = document.getElementById('btnMail');
 
-// FORMATEO DE PATENTE
+let ultimoTicketTexto = '';
+
+// FORMATEO PATENTE
 inputPatente.addEventListener('input', function(){
   let raw = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
   let out = raw.substring(0,2);
@@ -100,9 +110,11 @@ inputPatente.addEventListener('input', function(){
 });
 
 // BOTONES
+btnBuscar.onclick = buscarPatentes;
 document.getElementById('btnIniciar').onclick = iniciarEstadia;
 document.getElementById('btnDetener').onclick = detenerEstadia;
-document.getElementById('btnBuscar').onclick = buscarPatentes;
+btnWhatsapp.onclick = enviarWhatsapp;
+btnMail.onclick = enviarMail;
 
 // FUNCIONES
 function iniciarEstadia(){
@@ -117,12 +129,13 @@ function iniciarEstadia(){
 
 function buscarPatentes(){
   lista.innerHTML = '';
+  lista.style.display = 'block';
 
   const patentes = Object.keys(localStorage)
     .filter(k => /^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(k));
 
   if(patentes.length === 0){
-    alert('No hay patentes registradas');
+    lista.innerHTML = '<div>No hay patentes registradas</div>';
     return;
   }
 
@@ -136,8 +149,6 @@ function buscarPatentes(){
     };
     lista.appendChild(div);
   });
-
-  lista.style.display = 'block';
 }
 
 function mostrarTiempo(p){
@@ -148,20 +159,16 @@ function mostrarTiempo(p){
   resultado.style.display = 'block';
   resultado.innerHTML = `
     <b>CONSULTA DE ESTADÍA</b><br><br>
-    <b>Patente:</b> ${p}<br>
-    <b>Entrada:</b> ${entrada.toLocaleString()}<br>
-    <b>Minutos:</b> ${minutos}
+    Patente: ${p}<br>
+    Entrada: ${entrada.toLocaleString()}<br>
+    Minutos: ${minutos}
   `;
 }
 
 function detenerEstadia(){
   const p = inputPatente.value;
   const data = localStorage.getItem(p);
-
-  if(!data){
-    alert('Patente no encontrada');
-    return;
-  }
+  if(!data){ alert('Patente no encontrada'); return; }
 
   const entrada = new Date(JSON.parse(data).entrada);
   const salida = new Date();
@@ -171,15 +178,30 @@ function detenerEstadia(){
 
   localStorage.removeItem(p);
 
+  ultimoTicketTexto =
+`TICKET ESTACIONAMIENTO
+Patente: ${p}
+Entrada: ${entrada.toLocaleString()}
+Salida: ${salida.toLocaleString()}
+Minutos: ${minutos}
+Total: $${total}`;
+
   resultado.style.display = 'block';
-  resultado.innerHTML = `
-    <b>TICKET DE SALIDA</b><br><br>
-    <b>Patente:</b> ${p}<br>
-    <b>Entrada:</b> ${entrada.toLocaleString()}<br>
-    <b>Salida:</b> ${salida.toLocaleString()}<br>
-    <b>Minutos:</b> ${minutos}<br>
-    <b>Total:</b> $${total}
-  `;
+  resultado.innerHTML = ultimoTicketTexto.replace(/\n/g,'<br>');
+
+  btnWhatsapp.style.display = 'block';
+  btnMail.style.display = 'block';
+}
+
+function enviarWhatsapp(){
+  const url = `https://wa.me/?text=${encodeURIComponent(ultimoTicketTexto)}`;
+  window.open(url,'_blank');
+}
+
+function enviarMail(){
+  const mailto =
+`mailto:?subject=Ticket Estacionamiento&body=${encodeURIComponent(ultimoTicketTexto)}`;
+  window.location.href = mailto;
 }
 </script>
 </body>
