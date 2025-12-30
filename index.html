@@ -7,10 +7,11 @@
 <style>
 body{margin:0;font-family:Arial;background:#f5f7fa}
 .layout{display:flex;min-height:100vh}
-.sidebar{width:240px;background:#0f172a;color:#fff}
+.sidebar{width:230px;background:#0f172a;color:#fff}
 .brand{padding:16px;font-size:18px;border-bottom:1px solid #334155}
 .menu div{padding:14px 16px;cursor:pointer}
 .menu div:hover{background:#1e293b}
+.menu div.hidden{display:none}
 .content{flex:1;padding:24px}
 .seccion{display:none;max-width:900px}
 .seccion.activa{display:block}
@@ -21,11 +22,11 @@ button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .rojo{background:#dc2626}
 .verde{background:#16a34a}
 .gris{background:#6b7280}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 .badge{padding:4px 8px;border-radius:6px;font-size:12px}
 .ok{background:#16a34a;color:#fff}
 .block{background:#dc2626;color:#fff}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 </style>
 </head>
 
@@ -36,8 +37,8 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
   <div class="brand">PARKFACIL</div>
   <div class="menu">
     <div onclick="show('login')">🔑 Login</div>
-    <div onclick="show('operacion')">🚗 Operación</div>
-    <div onclick="show('operadores')">👤 Operadores</div>
+    <div id="menuOperacion" class="hidden" onclick="show('operacion')">🚗 Operación</div>
+    <div id="menuOps" class="hidden" onclick="show('operadores')">👤 Operadores</div>
   </div>
 </div>
 
@@ -58,7 +59,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <div id="operacion" class="seccion">
   <div class="card">
     <h3>Operación</h3>
-    <div id="sectorActivo" class="badge"></div>
+    <div id="opInfo"></div>
     <input id="patente" placeholder="CX-PY-95">
     <button class="azul" onclick="iniciar()">Iniciar estadía</button>
     <button class="rojo" onclick="detener()">Detener estadía</button>
@@ -70,11 +71,8 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <!-- OPERADORES -->
 <div id="operadores" class="seccion">
   <div class="card">
-    <h3>Gestión de Operadores (Admin)</h3>
-    <input id="opNombre" placeholder="Nombre">
-    <input id="opApellido" placeholder="Apellido">
-    <input id="opCorreo" placeholder="Correo">
-    <input id="opTelefono" placeholder="Teléfono móvil">
+    <h3>Gestión de Operadores</h3>
+    <input id="opNombre" placeholder="Nombre completo">
     <input id="opUsuario" placeholder="Usuario">
     <input id="opClave" type="password" placeholder="Clave">
     <select id="opRol">
@@ -82,15 +80,17 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
       <option value="admin">Admin</option>
     </select>
     <select id="opSector"></select>
-    <button class="verde" onclick="crearOperador()">Agregar operador</button>
+    <button class="verde" onclick="crearOperador()">Crear operador</button>
+
     <table>
       <thead>
         <tr>
           <th>Nombre</th>
+          <th>Usuario</th>
           <th>Rol</th>
           <th>Sector</th>
           <th>Estado</th>
-          <th>Acciones</th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="tablaOps"></tbody>
@@ -106,88 +106,72 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 const g=k=>JSON.parse(localStorage.getItem(k)||'[]');
 const s=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 
-// INIT DATA
+// DATOS BASE
 if(!g('sectores').length){
-  s('sectores',[
-    {id:1,n:'Sector A'},
-    {id:2,n:'Sector B'}
-  ]);
+  s('sectores',[{id:1,n:'Sector A'},{id:2,n:'Sector B'}]);
 }
 if(!g('ops').length){
-  s('ops',[
-    {id:1,n:'Admin Principal',usuario:'admin',clave:'admin123',rol:'admin',sector:1,activo:true}
-  ]);
+  s('ops',[{
+    id:1,nombre:'Admin',usuario:'admin',clave:'admin',
+    rol:'admin',sector:1,activo:true
+  }]);
 }
 
-let operadorActivo = null;
+let operador=null;
 
-// NAV
+// UI
 function show(id){
-  document.querySelectorAll('.seccion').forEach(s=>s.classList.remove('activa'));
+  document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
   document.getElementById(id).classList.add('activa');
 }
 
 // LOGIN
-function cargarLogin(){
-  loginUser.value = '';
-  loginPass.value = '';
-  loginMsg.innerText = '';
-  loginSelect.innerHTML='';
-  g('ops').filter(o=>o.activo).forEach(o=>{
-    loginSelect.innerHTML+=`<option value="${o.id}">${o.usuario}</option>`;
-  });
-}
-cargarLogin();
-
 function login(){
-  const u = loginUser.value.trim();
-  const p = loginPass.value.trim();
-
-  const op = g('ops').find(o =>
-    o.usuario === u &&
-    o.clave === p &&
-    o.activo &&
-    !o.bloqueado
-  );
+  const u=loginUser.value.trim();
+  const p=loginPass.value.trim();
+  const op=g('ops').find(o=>o.usuario===u && o.clave===p && o.activo);
 
   if(!op){
-    loginMsg.innerText = "❌ Usuario o clave incorrectos o bloqueado";
+    loginMsg.innerText='❌ Credenciales inválidas o bloqueado';
     return;
   }
 
-  operadorActivo = op;
-  loginMsg.innerText = `✔ Bienvenido ${op.nombre}`;
+  operador=op;
+  loginMsg.innerText=`✔ Bienvenido ${op.nombre}`;
+  menuOperacion.classList.remove('hidden');
   show('operacion');
 
-  if(op.rol === 'admin'){
-    document.querySelector("[onclick=\"show('operadores')\"]").style.display='block';
+  if(op.rol==='admin'){
+    menuOps.classList.remove('hidden');
   } else {
-    document.querySelector("[onclick=\"show('operadores')\"]").style.display='none';
+    menuOps.classList.add('hidden');
   }
+
+  opInfo.innerHTML=`<span class="badge ok">${op.rol}</span> Sector ${op.sector}`;
 }
 
 // OPERACION
 function iniciar(){
-  if(!operadorActivo) return alert('Debe iniciar sesión');
+  if(!operador) return alert('Debe iniciar sesión');
 
-  localStorage.setItem(patente.value, JSON.stringify({
-    e: Date.now(),
-    sector: operadorActivo.sector,
-    op: operadorActivo.usuario
+  localStorage.setItem(patente.value,JSON.stringify({
+    entrada:Date.now(),
+    sector:operador.sector,
+    operador:operador.usuario
   }));
 }
 
 function detener(){
-  const d = JSON.parse(localStorage.getItem(patente.value));
+  const d=JSON.parse(localStorage.getItem(patente.value));
   if(!d) return alert('No encontrada');
-  if(d.sector !== operadorActivo.sector) return alert('Fuera de sector');
+  if(d.sector!==operador.sector) return alert('Fuera de sector');
 
-  const min = Math.max(1, Math.floor((Date.now() - d.e) / 60000));
-  const total = min * 30;
-  resultado.innerText = `Total $${total}`;
+  const min=Math.max(1,Math.floor((Date.now()-d.entrada)/60000));
+  const total=min*30;
+  resultado.innerHTML=`Total: $${total}<br>Operador: ${d.operador}`;
 
-  const url = `https://parkfacil.cl/validar?patente=${patente.value}&sector=${d.sector}`;
-  qr.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}">`;
+  const url=`https://parkfacil.cl/validar?patente=${patente.value}&sector=${d.sector}&op=${d.operador}`;
+  qr.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}">`;
 
   localStorage.removeItem(patente.value);
 }
@@ -202,65 +186,47 @@ function cargarSectores(){
 cargarSectores();
 
 function crearOperador(){
-  if(!operadorActivo || operadorActivo.rol !== 'admin'){
-    alert('Solo admin puede agregar operadores');
-    return;
+  if(operador.rol!=='admin') return alert('Solo admin');
+
+  const ops=g('ops');
+  if(ops.some(o=>o.usuario===opUsuario.value)){
+    alert('Usuario ya existe');return;
   }
 
-  const ops = g('ops');
-
   ops.push({
-    id: Date.now(),
-    nombre: `${opNombre.value} ${opApellido.value}`,
-    usuario: opUsuario.value,
-    clave: opClave.value,
-    rol: opRol.value,
-    sector: +opSector.value,
-    activo: true,
-    bloqueado: false
+    id:Date.now(),
+    nombre:opNombre.value,
+    usuario:opUsuario.value,
+    clave:opClave.value,
+    rol:opRol.value,
+    sector:+opSector.value,
+    activo:true
   });
 
-  s('ops', ops);
+  s('ops',ops);
   cargarTabla();
-  cargarLogin();
-  limpiarCamposOperador();
 }
 
-function limpiarCamposOperador(){
-  opNombre.value = '';
-  opApellido.value = '';
-  opCorreo.value = '';
-  opTelefono.value = '';
-  opUsuario.value = '';
-  opClave.value = '';
-  opRol.value = 'operador';
-  opSector.selectedIndex = 0;
-}
-
-function toggleOperador(id){
-  const ops = g('ops');
-  const o = ops.find(x => x.id === id);
-  o.activo = !o.activo;
-  s('ops', ops);
+function toggle(id){
+  const ops=g('ops');
+  const o=ops.find(x=>x.id===id);
+  o.activo=!o.activo;
+  s('ops',ops);
   cargarTabla();
-  cargarLogin();
 }
 
 function cargarTabla(){
-  tablaOps.innerHTML = '';
-  g('ops').forEach(o => {
-    const sec = g('sectores').find(s => s.id === o.sector).n;
-    tablaOps.innerHTML += `
+  tablaOps.innerHTML='';
+  g('ops').forEach(o=>{
+    const sec=g('sectores').find(s=>s.id===o.sector).n;
+    tablaOps.innerHTML+=`
       <tr>
         <td>${o.nombre}</td>
+        <td>${o.usuario}</td>
         <td>${o.rol}</td>
         <td>${sec}</td>
-        <td><span class="badge ${o.activo ? 'ok' : 'block'}">${o.activo ? 'Activo' : 'Bloqueado'}</span></td>
-        <td>
-          <button class="gris" onclick="toggleOperador(${o.id})">
-            ${o.activo ? 'Bloquear' : 'Desbloquear'}
-          </button>
-        </td>
+        <td><span class="badge ${o.activo?'ok':'block'}">${o.activo?'Activo':'Bloqueado'}</span></td>
+        <td><button class="gris" onclick="toggle(${o.id})">Toggle</button></td>
       </tr>`;
   });
 }
