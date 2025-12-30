@@ -6,17 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{margin:0;font-family:Arial;background:#f5f7fa}
-.layout{display:flex;min-height:100vh}
-.sidebar{width:240px;background:#0f172a;color:#fff}
-.brand{padding:16px;font-size:18px;border-bottom:1px solid #334155}
-.menu div{padding:14px 16px;cursor:pointer}
-.menu div:hover{background:#1e293b}
-.menu .hidden{display:none}
-.content{flex:1;padding:20px}
-.seccion{display:none;max-width:900px}
-.seccion.activa{display:block}
-.card{background:#fff;padding:20px;border-radius:10px}
+body{margin:0;font-family:Arial;background:#f1f5f9}
+.sidebar{width:220px;background:#0f172a;color:#fff;position:fixed;height:100vh}
+.sidebar h2{margin:0;padding:16px;font-size:18px;border-bottom:1px solid #334155}
+.sidebar div{padding:14px 16px;cursor:pointer}
+.sidebar div:hover{background:#1e293b}
+.content{margin-left:220px;padding:20px}
+.hidden{display:none}
+.card{background:#fff;padding:20px;border-radius:10px;max-width:500px}
 input,select,button{width:100%;padding:10px;margin-top:8px}
 button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .azul{background:#2563eb}
@@ -24,225 +21,159 @@ button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .rojo{background:#dc2626}
 .gris{background:#6b7280}
 table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border-bottom:1px solid #ddd;padding:6px;text-align:left}
-.badge{padding:3px 6px;border-radius:4px;font-size:12px}
-.ok{background:#16a34a;color:#fff}
-.block{background:#dc2626;color:#fff}
-
-/* Ticket */
-.ticket{width:220px;margin:auto;border:1px dashed #000;padding:8px;font-size:12px}
+th,td{border-bottom:1px solid #ddd;padding:6px}
+.ticket{width:220px;margin-top:15px;border:1px dashed #000;padding:8px;font-size:12px}
 .ticket h3{text-align:center;margin:4px 0}
-.ticket .c{text-align:center}
-.ticket hr{border:none;border-top:1px dashed #000}
+.c{text-align:center}
 </style>
 </head>
 
 <body>
-<div class="layout">
 
 <div class="sidebar">
-  <div class="brand">PARKFACIL</div>
-  <div class="menu">
-    <div onclick="show('login')">🔑 Login</div>
-    <div id="mOperacion" class="hidden" onclick="show('operacion')">🚗 Operación</div>
-    <div id="mUsuarios" class="hidden" onclick="show('usuarios')">👤 Operadores</div>
-  </div>
+  <h2>PARKFACIL</h2>
+  <div onclick="mostrar('login')">🔑 Login</div>
+  <div onclick="mostrar('operacion')" id="mOp" class="hidden">🚗 Operar</div>
+  <div onclick="mostrar('usuarios')" id="mUsr" class="hidden">👤 Operadores</div>
+  <div onclick="logout()" id="mOut" class="hidden">⏻ Logout</div>
 </div>
 
 <div class="content">
 
-<!-- BOOTSTRAP -->
-<div id="bootstrap" class="seccion">
-  <div class="card">
-    <h3>Crear Administrador Inicial</h3>
-    <input id="bNombre" placeholder="Nombre">
-    <input id="bUsuario" placeholder="Usuario">
-    <input id="bClave" type="password" placeholder="Clave">
-    <button class="verde" onclick="crearAdmin()">Crear administrador</button>
-  </div>
-</div>
-
 <!-- LOGIN -->
-<div id="login" class="seccion">
-  <div class="card">
-    <h3>Login</h3>
-    <input id="loginUser" placeholder="Usuario">
-    <input id="loginPass" type="password" placeholder="Clave">
-    <button class="verde" onclick="login()">Ingresar</button>
-    <div id="loginMsg"></div>
-  </div>
+<div id="login" class="card">
+  <h3>Login</h3>
+  <input id="lUser" placeholder="Usuario">
+  <input id="lPass" type="password" placeholder="Clave">
+  <button class="verde" onclick="login()">Ingresar</button>
+  <div id="msg"></div>
 </div>
 
 <!-- OPERACION -->
-<div id="operacion" class="seccion">
-  <div class="card">
-    <h3>Operación</h3>
-    <div id="info"></div>
+<div id="operacion" class="card hidden">
+  <h3>Operación</h3>
+  <div id="info"></div>
 
-    <input id="patente" placeholder="CX-PY-95">
-    <button class="azul" onclick="iniciar()">Iniciar estadía</button>
+  <input id="patente" placeholder="CX-PY-95">
+  <button class="azul" onclick="iniciar()">Iniciar</button>
 
-    <h4>Patentes activas</h4>
-    <select id="listaPatentes"></select>
-    <button class="rojo" onclick="detener()">Detener estadía</button>
+  <h4>Patentes activas</h4>
+  <select id="lista"></select>
+  <button class="rojo" onclick="detener()">Detener</button>
 
-    <div id="ticket"></div>
-  </div>
+  <div id="ticket"></div>
 </div>
 
 <!-- USUARIOS -->
-<div id="usuarios" class="seccion">
-  <div class="card">
-    <h3>Gestión de Operadores</h3>
+<div id="usuarios" class="card hidden">
+  <h3>Operadores</h3>
 
-    <input id="uNombre" placeholder="Nombre">
-    <input id="uUsuario" placeholder="Usuario">
-    <input id="uClave" type="password" placeholder="Clave">
+  <input id="uUser" placeholder="Usuario">
+  <input id="uPass" placeholder="Clave">
+  <select id="uSector">
+    <option value="A">Sector A</option>
+    <option value="B">Sector B</option>
+  </select>
+  <button class="verde" onclick="crearOperador()">Crear operador</button>
 
-    <select id="uRol">
-      <option value="operador">Operador</option>
-      <option value="admin">Admin</option>
-    </select>
-
-    <select id="uSector">
-      <option value="1">Sector A</option>
-      <option value="2">Sector B</option>
-    </select>
-
-    <button class="verde" onclick="crearUsuario()">Crear usuario</button>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Usuario</th><th>Rol</th><th>Sector</th><th>Estado</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="tablaUsuarios"></tbody>
-    </table>
-  </div>
+  <table>
+    <thead><tr><th>Usuario</th><th>Sector</th><th>Estado</th><th></th></tr></thead>
+    <tbody id="tabla"></tbody>
+  </table>
 </div>
 
-</div>
 </div>
 
 <script>
-/* Helpers */
-const g=k=>JSON.parse(localStorage.getItem(k)||'[]');
-const s=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-let activo=null;
-
-/* INIT */
-if(g('usuarios').length===0) show('bootstrap');
-else show('login');
-
-function show(id){
-  document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
-  document.getElementById(id).classList.add('activa');
+/* === INIT === */
+if(!localStorage.getItem('usuarios')){
+  localStorage.setItem('usuarios',JSON.stringify([{
+    usuario:'admin',clave:'admin',rol:'admin',sector:'ALL',activo:true
+  }]));
 }
 
-/* ADMIN INICIAL */
-function crearAdmin(){
-  s('usuarios',[{
-    id:Date.now(),nombre:bNombre.value,
-    usuario:bUsuario.value,clave:bClave.value,
-    rol:'admin',sector:1,activo:true,bloqueado:false
-  }]);
-  show('login');
+let usuarioActivo=null;
+const getU=()=>JSON.parse(localStorage.getItem('usuarios'));
+const setU=v=>localStorage.setItem('usuarios',JSON.stringify(v));
+
+function mostrar(id){
+  ['login','operacion','usuarios'].forEach(x=>document.getElementById(x).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
 }
 
 /* LOGIN */
 function login(){
-  const u=g('usuarios').find(x=>
-    x.usuario===loginUser.value &&
-    x.clave===loginPass.value &&
-    x.activo && !x.bloqueado
-  );
-  if(!u){loginMsg.innerText='Credenciales inválidas';return;}
-  activo=u;
-  mOperacion.classList.remove('hidden');
-  if(u.rol==='admin') mUsuarios.classList.remove('hidden');
-  info.innerText=`${u.nombre} | ${u.rol} | Sector ${u.sector}`;
+  const u=getU().find(x=>x.usuario===lUser.value && x.clave===lPass.value && x.activo);
+  if(!u){msg.innerText='Credenciales inválidas';return;}
+  usuarioActivo=u;
+  mOp.classList.remove('hidden');
+  mOut.classList.remove('hidden');
+  if(u.rol==='admin') mUsr.classList.remove('hidden');
+  info.innerText=`Usuario: ${u.usuario} | Sector: ${u.sector}`;
   cargarPatentes();
-  show('operacion');
+  mostrar('operacion');
 }
 
-/* USUARIOS */
-function crearUsuario(){
-  if(activo.rol!=='admin') return;
-  const arr=g('usuarios');
-  arr.push({
-    id:Date.now(),
-    nombre:uNombre.value,usuario:uUsuario.value,
-    clave:uClave.value,rol:uRol.value,
-    sector:+uSector.value,activo:true,bloqueado:false
-  });
-  s('usuarios',arr);
-  cargarUsuarios();
+/* LOGOUT */
+function logout(){
+  usuarioActivo=null;
+  location.reload();
 }
 
-function cargarUsuarios(){
-  tablaUsuarios.innerHTML='';
-  g('usuarios').filter(u=>u.activo).forEach(u=>{
-    tablaUsuarios.innerHTML+=`
-      <tr>
-        <td>${u.usuario}</td>
-        <td>${u.rol}</td>
-        <td>${u.sector}</td>
-        <td>${u.bloqueado?'Bloqueado':'Activo'}</td>
-        <td>
-          <button onclick="bloquear(${u.id})">Bloq</button>
-          <button onclick="eliminar(${u.id})">Del</button>
-        </td>
-      </tr>`;
+/* OPERADORES */
+function crearOperador(){
+  const arr=getU();
+  arr.push({usuario:uUser.value,clave:uPass.value,rol:'operador',sector:uSector.value,activo:true});
+  setU(arr);
+  cargarTabla();
+}
+function cargarTabla(){
+  tabla.innerHTML='';
+  getU().filter(x=>x.rol==='operador').forEach(o=>{
+    tabla.innerHTML+=`<tr>
+      <td>${o.usuario}</td><td>${o.sector}</td><td>${o.activo?'OK':'OFF'}</td>
+      <td><button onclick="bloq('${o.usuario}')">Bloq</button></td>
+    </tr>`;
   });
 }
-function bloquear(id){
-  const arr=g('usuarios'); const u=arr.find(x=>x.id===id);
-  u.bloqueado=!u.bloqueado; s('usuarios',arr); cargarUsuarios();
+function bloq(u){
+  const arr=getU(); const o=arr.find(x=>x.usuario===u);
+  o.activo=!o.activo; setU(arr); cargarTabla();
 }
-function eliminar(id){
-  const arr=g('usuarios'); const u=arr.find(x=>x.id===id);
-  u.activo=false; s('usuarios',arr); cargarUsuarios();
-}
-cargarUsuarios();
+cargarTabla();
 
 /* OPERACION */
 function iniciar(){
   localStorage.setItem('est_'+patente.value,JSON.stringify({
     patente:patente.value,
-    entrada:Date.now(),
-    sector:activo.sector,
-    operador:activo.usuario
+    sector:usuarioActivo.sector,
+    entrada:Date.now()
   }));
   cargarPatentes();
 }
 
 function cargarPatentes(){
-  listaPatentes.innerHTML='';
-  Object.keys(localStorage)
-    .filter(k=>k.startsWith('est_'))
-    .forEach(k=>{
-      const d=JSON.parse(localStorage.getItem(k));
-      if(d.sector===activo.sector)
-        listaPatentes.innerHTML+=`<option value="${k}">${d.patente}</option>`;
-    });
+  lista.innerHTML='';
+  Object.keys(localStorage).filter(k=>k.startsWith('est_')).forEach(k=>{
+    const d=JSON.parse(localStorage.getItem(k));
+    if(usuarioActivo.sector==='ALL'||d.sector===usuarioActivo.sector)
+      lista.innerHTML+=`<option value="${k}">${d.patente}</option>`;
+  });
 }
 
 function detener(){
-  const k=listaPatentes.value;
-  if(!k)return;
+  const k=lista.value; if(!k)return;
   const d=JSON.parse(localStorage.getItem(k));
   const min=Math.max(1,Math.floor((Date.now()-d.entrada)/60000));
   const total=min*30;
-
   ticket.innerHTML=`
   <div class="ticket">
     <h3>PARKFACIL</h3>
     <div class="c">Patente ${d.patente}</div>
-    <div class="c">Minutos ${min}</div>
-    <div class="c">Total $${total}</div>
-    <hr>
-    <div class="c">QR VALIDACIÓN</div>
+    <div class="c">Sector ${d.sector}</div>
+    <div class="c">Min ${min}</div>
+    <div class="c"><b>$${total}</b></div>
+    <div class="c">QR:${btoa(d.patente+Date.now()).slice(0,10)}</div>
     <div class="c">Boleta electrónica</div>
   </div>`;
   localStorage.removeItem(k);
