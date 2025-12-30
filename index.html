@@ -6,219 +6,182 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-  font-family: monospace;
-  background:#f5f7fa;
-  display:flex;
-  justify-content:center;
-  padding:10px;
-}
-.card{
-  background:#fff;
-  width:100%;
-  max-width:380px;
-  padding:12px;
-  border-radius:10px;
-}
-input,button{
-  width:100%;
-  padding:12px;
-  margin-top:8px;
-  font-size:16px;
-}
-button{
-  border:none;
-  border-radius:8px;
-  color:#fff;
-  cursor:pointer;
-}
-#btnIniciar{background:#2563eb}
-#btnDetener{background:#dc2626}
-#btnBuscar{background:#6b7280}
-#btnWhats{background:#25d366}
-#btnMail{background:#2563eb}
-
-.ticket{
-  width:58mm;
-  margin:12px auto;
-  font-size:12px;
-}
+body{font-family:monospace;background:#f3f4f6;display:flex;justify-content:center;padding:10px}
+.card{background:#fff;width:100%;max-width:380px;padding:14px;border-radius:10px}
+input,button{width:100%;padding:12px;margin-top:8px;font-size:16px}
+button{border:none;border-radius:8px;color:#fff;cursor:pointer}
+.blue{background:#2563eb}
+.red{background:#dc2626}
+.gray{background:#6b7280}
+.green{background:#22c55e}
+.ticket{width:58mm;margin:12px auto;font-size:12px}
 .centro{text-align:center}
 hr{border:none;border-top:1px dashed #000;margin:6px 0}
-.logo-ticket{width:40px;display:block;margin:6px auto}
 </style>
 </head>
 
 <body>
 <div class="card">
+
+<!-- LOGIN OPERADOR -->
+<div id="loginBox">
   <div class="centro"><b>PARKFACIL</b></div>
+  <input id="operadorInput" placeholder="Código Operador">
+  <button class="blue" onclick="login()">Iniciar Turno</button>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div class="centro"><b>Operador:</b> <span id="opNombre"></span></div>
 
   <input id="patente" placeholder="CX-PY-95" maxlength="8">
 
-  <button id="btnIniciar">Iniciar estadía</button>
-  <button id="btnDetener">Detener estadía</button>
-  <button id="btnBuscar">Buscar patente</button>
-  <button id="btnWhats">Enviar por WhatsApp</button>
-  <button id="btnMail">Enviar por Email</button>
+  <button class="blue" onclick="iniciar()">Iniciar estadía</button>
+  <button class="red" onclick="detener()">Detener estadía</button>
+  <button class="gray" onclick="buscar()">Buscar patente</button>
+
+  <button class="green" onclick="cierre()">Cierre de Turno</button>
 
   <div id="resultado"></div>
 </div>
 
+</div>
+
 <script>
-/* ================= CONFIG ================= */
-const VALOR_POR_MINUTO = 30;
+const VALOR_MIN = 30;
 const IVA = 0.19;
 
-/* LOGO BASE64 OFFLINE (placeholder) */
-const LOGO_BASE64 =
-"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABR0lEQVQ4T6WTMUoDQRCFv9nYBMsEJBBE0sZCwsbCwsbGwsrCw8AE8g8QSYEktgIlpA8hEMJi5sLhz3p3Z3Zmdndz7zvnOe8+5zv9U4RQpJf1gm6AM2AF2AF6nG3AGn2qAq8gN5r8Kcz5nJH9KZV+Y4MZt8pM6DgkXyCFZg6bZpN5oYq7P0mH9h6xWZkqX0zJc5u+8nZ4nO0Cz2F+E8wBRa2Yx9Z7y2p6S7kV7zC1zA9q0+X8wOQ7G8D4Z+4XzX0Y+q5X9GZzYkAAAAASUVORK5CYII=";
+let operador = null;
 
-/* ================= PATENTE ================= */
-const inputPatente = document.getElementById('patente');
-inputPatente.addEventListener('input', ()=>{
-  let raw = inputPatente.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  let out = raw.substring(0,2);
-  if(raw.length>2) out+='-'+raw.substring(2,4);
-  if(raw.length>4) out+='-'+raw.substring(4,6);
-  inputPatente.value = out;
+/* ========= LOGIN ========= */
+function login(){
+  const op = operadorInput.value.trim();
+  if(!op) return alert('Ingrese operador');
+  operador = op;
+  localStorage.setItem('operadorActivo', op);
+  document.getElementById('opNombre').textContent = op;
+  document.getElementById('loginBox').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+
+(function autoLogin(){
+  const op = localStorage.getItem('operadorActivo');
+  if(op){
+    operador = op;
+    document.getElementById('opNombre').textContent = op;
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('app').style.display='block';
+  }
+})();
+
+/* ========= PATENTE ========= */
+patente.addEventListener('input',()=>{
+  let r = patente.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  let o = r.substring(0,2);
+  if(r.length>2) o+='-'+r.substring(2,4);
+  if(r.length>4) o+='-'+r.substring(4,6);
+  patente.value=o;
 });
 
-/* ================= BOTONES ================= */
-document.getElementById('btnIniciar').addEventListener('click', iniciar);
-document.getElementById('btnDetener').addEventListener('click', detener);
-document.getElementById('btnBuscar').addEventListener('click', buscar);
-document.getElementById('btnWhats').addEventListener('click', enviarWhats);
-document.getElementById('btnMail').addEventListener('click', enviarMail);
-
-let ultimaURL = '';
-
-/* ================= FUNCIONES ================= */
+/* ========= FUNCIONES ========= */
 
 function iniciar(){
-  const p = inputPatente.value;
-  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)){
-    alert('Patente inválida');
-    return;
-  }
-  const entrada = new Date();
-  localStorage.setItem(p, JSON.stringify({entrada}));
+  if(!operador) return alert('Operador no activo');
+  const p = patente.value;
+  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)) return alert('Patente inválida');
 
-  imprimirTicket(
-    'TICKET DE ENTRADA',
-    [
-      `Patente: ${p}`,
-      `Fecha: ${entrada.toLocaleDateString()}`,
-      `Hora: ${entrada.toLocaleTimeString()}`
-    ],
-    null
-  );
+  localStorage.setItem(p, JSON.stringify({
+    entrada: new Date(),
+    operador
+  }));
+
+  ticket('ENTRADA',[
+    `Patente: ${p}`,
+    `Operador: ${operador}`,
+    `Hora: ${new Date().toLocaleTimeString()}`
+  ]);
 }
 
 function detener(){
-  const p = inputPatente.value;
-  const data = localStorage.getItem(p);
-  if(!data){
-    alert('Patente no encontrada');
-    return;
-  }
+  const p = patente.value;
+  const d = JSON.parse(localStorage.getItem(p) || null);
+  if(!d) return alert('Patente no encontrada');
 
-  const entrada = new Date(JSON.parse(data).entrada);
   const salida = new Date();
-  const min = Math.max(1, Math.floor((salida-entrada)/60000));
-  const sub = min * VALOR_POR_MINUTO;
-  const iva = Math.round(sub * IVA);
-  const total = sub + iva;
+  const min = Math.max(1, Math.floor((salida - new Date(d.entrada))/60000));
+  const sub = min * VALOR_MIN;
+  const iva = Math.round(sub*IVA);
+  const total = sub+iva;
 
-  const ticketId = Date.now() + '-' + p.replace(/-/g,'');
-  ultimaURL =
-    location.origin +
-    location.pathname.replace('index.html','') +
-    'validar.html?id=' + ticketId;
+  const id = 'T-'+Date.now();
 
-  localStorage.setItem(ticketId, JSON.stringify({
-    patente:p, entrada, salida, total
+  localStorage.setItem(id, JSON.stringify({
+    operador:d.operador,
+    total,
+    fecha:salida
   }));
 
-  imprimirTicket(
-    'TICKET DE SALIDA',
-    [
-      `Patente: ${p}`,
-      `Minutos: ${min}`,
-      `Subtotal: $${sub}`,
-      `IVA: $${iva}`,
-      `TOTAL: $${total}`
-    ],
-    ultimaURL
-  );
+  localStorage.removeItem(p);
+
+  ticket('SALIDA',[
+    `Patente: ${p}`,
+    `Minutos: ${min}`,
+    `TOTAL: $${total}`
+  ]);
 }
 
 function buscar(){
-  alert('Función buscar activa');
+  const p = patente.value;
+  const d = JSON.parse(localStorage.getItem(p)||null);
+  if(!d) return alert('No encontrada');
+
+  ticket('ESTADÍA ACTIVA',[
+    `Patente: ${p}`,
+    `Operador: ${d.operador}`,
+    `Entrada: ${new Date(d.entrada).toLocaleTimeString()}`
+  ]);
 }
 
-/* ================= TICKET ================= */
+/* ========= CIERRE ========= */
 
-function imprimirTicket(titulo, lineas, qrURL){
-  const res = document.getElementById('resultado');
+function cierre(){
+  let total = 0;
+  let cant = 0;
 
-  let html = `
-  <div class="ticket">
-    <img class="logo-ticket" src="${LOGO_BASE64}">
-    <div class="centro"><b>${titulo}</b></div>
-    <div class="centro">PARKFACIL</div>
-    <hr>
-  `;
-
-  lineas.forEach(l=>{
-    if(l.startsWith('TOTAL'))
-      html+=`<div class="centro"><b>${l}</b></div>`;
-    else
-      html+=`<div>${l}</div>`;
+  Object.keys(localStorage).forEach(k=>{
+    if(k.startsWith('T-')){
+      const t = JSON.parse(localStorage.getItem(k));
+      if(t.operador===operador){
+        total+=t.total;
+        cant++;
+        localStorage.removeItem(k);
+      }
+    }
   });
 
-  if(qrURL){
-    html+=`
-    <hr>
-    <div class="centro">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrURL)}">
-    </div>`;
-  }
+  localStorage.removeItem('operadorActivo');
+  operador=null;
 
-  html+=`
-    <hr>
-    <div class="centro">Gracias por su visita</div>
-    <div class="centro" style="font-size:10px">
-      Boleta Electrónica<br>
-      Resolución SII N°123456<br>
-      Verifique este documento en www.sii.cl
-    </div>
-  </div>`;
+  ticket('CIERRE DE TURNO',[
+    `Operador: ${operadorInput.value}`,
+    `Tickets: ${cant}`,
+    `TOTAL: $${total}`,
+    `Fecha: ${new Date().toLocaleString()}`
+  ]);
 
-  res.innerHTML = html;
+  setTimeout(()=>location.reload(),3000);
 }
 
-/* ================= ENVÍOS ================= */
+/* ========= TICKET ========= */
 
-function enviarWhats(){
-  if(!ultimaURL){
-    alert('Debe detener una estadía primero');
-    return;
-  }
-  window.open(
-    'https://wa.me/?text=' +
-    encodeURIComponent('Su ticket PARKFACIL:\n' + ultimaURL),
-    '_blank'
-  );
-}
-
-function enviarMail(){
-  if(!ultimaURL){
-    alert('Debe detener una estadía primero');
-    return;
-  }
-  location.href =
-    'mailto:?subject=Ticket PARKFACIL&body=' +
-    encodeURIComponent(ultimaURL);
+function ticket(titulo,lineas){
+  let h=`<div class="ticket"><div class="centro"><b>${titulo}</b></div><hr>`;
+  lineas.forEach(l=>{
+    if(l.startsWith('TOTAL')) h+=`<div class="centro"><b>${l}</b></div>`;
+    else h+=`<div>${l}</div>`;
+  });
+  h+=`<hr><div class="centro">PARKFACIL</div></div>`;
+  resultado.innerHTML=h;
 }
 </script>
 </body>
