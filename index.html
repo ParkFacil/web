@@ -6,12 +6,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{margin:0;font-family:Arial;background:#f1f5f9}
-.sidebar{width:240px;background:#0f172a;color:#fff;position:fixed;height:100vh}
+.sidebar{width:260px;background:#0f172a;color:#fff;position:fixed;height:100vh}
 .sidebar h2{margin:0;padding:16px;border-bottom:1px solid #334155}
 .sidebar div{padding:14px 16px;cursor:pointer}
 .sidebar div:hover{background:#1e293b}
-.content{margin-left:240px;padding:20px}
-.card{background:#fff;padding:20px;border-radius:10px;max-width:800px}
+.content{margin-left:260px;padding:20px}
+.card{background:#fff;padding:20px;border-radius:10px;max-width:900px}
 .hidden{display:none}
 input,select,button{width:100%;padding:10px;margin-top:8px}
 button{border:none;border-radius:6px;color:#fff}
@@ -37,6 +37,7 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 
 <div class="content">
 
+<!-- LOGIN -->
 <div id="login" class="card">
   <h3>Login</h3>
   <input id="lUser" placeholder="Usuario">
@@ -45,6 +46,7 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
   <div id="msg"></div>
 </div>
 
+<!-- OPERACION -->
 <div id="operacion" class="card hidden">
   <h3>Operación</h3>
   <div id="info"></div>
@@ -54,25 +56,38 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
   <button class="rojo" onclick="detener()">Detener</button>
 </div>
 
+<!-- OPERADORES -->
 <div id="usuarios" class="card hidden">
   <h3>Operadores</h3>
+
+  <h4>Crear operador</h4>
   <input id="uUser" placeholder="Usuario">
   <input id="uPass" placeholder="Clave">
   <select id="uSector"></select>
-  <button class="verde" onclick="crearOperador()">Crear operador</button>
+  <button class="verde" onclick="crearOperador()">Crear</button>
+
+  <h4>Listado</h4>
   <table>
-    <thead><tr><th>Usuario</th><th>Sector</th><th>Estado</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Usuario</th><th>Sector</th><th>Estado</th><th>Acciones</th>
+      </tr>
+    </thead>
     <tbody id="tablaUsuarios"></tbody>
   </table>
 </div>
 
+<!-- SECTORES -->
 <div id="sectores" class="card hidden">
   <h3>Sectores</h3>
   <input id="sId" placeholder="ID">
   <input id="sNombre" placeholder="Nombre">
   <button class="verde" onclick="crearSector()">Crear sector</button>
+
   <table>
-    <thead><tr><th>ID</th><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+    <thead>
+      <tr><th>ID</th><th>Nombre</th><th>Estado</th><th></th></tr>
+    </thead>
     <tbody id="tablaSectores"></tbody>
   </table>
 </div>
@@ -80,14 +95,18 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 </div>
 
 <script>
-/* ===== STORAGE ===== */
-const G = k => JSON.parse(localStorage.getItem(k) || '[]');
-const S = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+/* ========= STORAGE ========= */
+const G=k=>JSON.parse(localStorage.getItem(k)||'[]');
+const S=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const uid=()=>Date.now()+Math.random();
 
-/* ===== INIT LIMPIO ===== */
+/* ========= INIT ========= */
 (function(){
   if(!localStorage.getItem('usuarios')){
-    S('usuarios',[{usuario:'admin',clave:'admin',rol:'admin',sector:'ALL',activo:true}]);
+    S('usuarios',[{
+      id:uid(),usuario:'admin',clave:'admin',
+      rol:'admin',sector:'ALL',activo:true
+    }]);
   }
   if(!localStorage.getItem('sectores')){
     S('sectores',[]);
@@ -96,73 +115,123 @@ const S = (k,v) => localStorage.setItem(k, JSON.stringify(v));
 
 let sesion=null;
 
-/* ===== UI ===== */
+/* ========= UI ========= */
 function show(id){
   ['login','operacion','usuarios','sectores']
     .forEach(x=>document.getElementById(x).classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
 }
 
-/* ===== LOGIN ===== */
+/* ========= LOGIN ========= */
 function login(){
-  const u = G('usuarios').find(x=>x.usuario===lUser.value && x.clave===lPass.value && x.activo);
-  if(!u){msg.innerText='Error';return;}
+  const u=G('usuarios').find(x=>x.usuario===lUser.value && x.clave===lPass.value && x.activo);
+  if(!u){msg.innerText='Credenciales inválidas';return;}
   sesion=u;
   mOp.classList.remove('hidden');
   mOut.classList.remove('hidden');
   if(u.rol==='admin'){mUsr.classList.remove('hidden');mSec.classList.remove('hidden');}
   info.innerText=`${u.usuario} | Sector ${u.sector}`;
-  refrescarTodo();
+  refreshAll();
   show('operacion');
 }
 function logout(){location.reload();}
 
-/* ===== SECTORES ===== */
+/* ========= SECTORES ========= */
 function crearSector(){
   const sectores=G('sectores');
-  if(sectores.find(s=>s.id===sId.value)) return alert('Existe');
+  if(sectores.find(s=>s.id===sId.value)) return alert('Sector existe');
   sectores.push({id:sId.value,nombre:sNombre.value,activo:true});
   S('sectores',sectores);
-  refrescarTodo();
+  refreshAll();
 }
 function toggleSector(id){
   const sectores=G('sectores');
   const s=sectores.find(x=>x.id===id);
   s.activo=!s.activo;
   S('sectores',sectores);
-  refrescarTodo();
+  refreshAll();
 }
 function cargarSectores(){
   tablaSectores.innerHTML='';
   G('sectores').forEach(s=>{
     tablaSectores.innerHTML+=`
-      <tr>
-        <td>${s.id}</td><td>${s.nombre}</td>
-        <td>${s.activo?'Activo':'Inactivo'}</td>
-        <td><button onclick="toggleSector('${s.id}')">Toggle</button></td>
-      </tr>`;
+    <tr>
+      <td>${s.id}</td><td>${s.nombre}</td>
+      <td>${s.activo?'Activo':'Inactivo'}</td>
+      <td><button onclick="toggleSector('${s.id}')">Toggle</button></td>
+    </tr>`;
   });
 }
 
-/* ===== OPERADORES ===== */
+/* ========= OPERADORES ========= */
 function crearOperador(){
-  const sectores=G('sectores').filter(s=>s.activo);
-  if(!sectores.find(s=>s.id===uSector.value)) return alert('Sector inválido');
+  const sector=uSector.value;
+  if(!G('sectores').find(s=>s.id===sector && s.activo)) return alert('Sector inválido');
 
   const usuarios=G('usuarios');
-  usuarios.push({usuario:uUser.value,clave:uPass.value,rol:'operador',sector:uSector.value,activo:true});
+  if(usuarios.find(u=>u.usuario===uUser.value)) return alert('Usuario existe');
+
+  usuarios.push({
+    id:uid(),
+    usuario:uUser.value,
+    clave:uPass.value,
+    rol:'operador',
+    sector,
+    activo:true
+  });
   S('usuarios',usuarios);
-  refrescarTodo();
+  refreshAll();
 }
+
 function cargarUsuarios(){
   tablaUsuarios.innerHTML='';
   G('usuarios').filter(u=>u.rol==='operador').forEach(u=>{
     tablaUsuarios.innerHTML+=`
-      <tr><td>${u.usuario}</td><td>${u.sector}</td><td>${u.activo?'OK':'OFF'}</td></tr>`;
+    <tr>
+      <td>${u.usuario}</td>
+      <td>
+        <select onchange="reasignar('${u.id}',this.value)">
+          ${sectorOptions(u.sector)}
+        </select>
+      </td>
+      <td>${u.activo?'Activo':'Bloqueado'}</td>
+      <td>
+        <button onclick="toggleUser('${u.id}')">Bloq</button>
+        <button onclick="eliminarUser('${u.id}')">Eliminar</button>
+      </td>
+    </tr>`;
   });
 }
 
-/* ===== OPERACION ===== */
+function sectorOptions(actual){
+  return G('sectores').filter(s=>s.activo).map(s=>
+    `<option value="${s.id}" ${s.id===actual?'selected':''}>${s.nombre}</option>`
+  ).join('');
+}
+
+function reasignar(id,sector){
+  const usuarios=G('usuarios');
+  const u=usuarios.find(x=>x.id==id);
+  u.sector=sector;
+  S('usuarios',usuarios);
+}
+
+function toggleUser(id){
+  const usuarios=G('usuarios');
+  const u=usuarios.find(x=>x.id==id);
+  u.activo=!u.activo;
+  S('usuarios',usuarios);
+  refreshAll();
+}
+
+function eliminarUser(id){
+  let usuarios=G('usuarios');
+  usuarios=usuarios.filter(u=>u.id!=id);
+  S('usuarios',usuarios);
+  refreshAll();
+}
+
+/* ========= OPERACION ========= */
 function iniciar(){
   if(sesion.sector!=='ALL'){
     const s=G('sectores').find(x=>x.id===sesion.sector && x.activo);
@@ -179,22 +248,22 @@ function cargarPatentes(){
   lista.innerHTML='';
   Object.keys(localStorage).filter(k=>k.startsWith('est_')).forEach(k=>{
     const e=JSON.parse(localStorage.getItem(k));
-    if(sesion.sector==='ALL'||e.sector===sesion.sector){
+    if(sesion.sector==='ALL'||e.sector===sesion.sector)
       lista.innerHTML+=`<option value="${k}">${e.patente}</option>`;
-    }
   });
 }
 function detener(){
   const k=lista.value;
   if(!k) return;
   const e=JSON.parse(localStorage.getItem(k));
-  if(sesion.sector!=='ALL' && e.sector!==sesion.sector) return alert('Fuera de sector');
+  if(sesion.sector!=='ALL' && e.sector!==sesion.sector)
+    return alert('Fuera de sector');
   localStorage.removeItem(k);
   cargarPatentes();
 }
 
-/* ===== REFRESH ===== */
-function refrescarTodo(){
+/* ========= REFRESH ========= */
+function refreshAll(){
   cargarSectores();
   uSector.innerHTML='';
   G('sectores').filter(s=>s.activo).forEach(s=>{
