@@ -18,18 +18,19 @@ body{
   width:100%;
   max-width:380px;
   padding:12px;
-  border-radius:8px;
+  border-radius:10px;
 }
 input,button{
   width:100%;
-  padding:10px;
-  margin-top:6px;
+  padding:12px;
+  margin-top:8px;
   font-size:16px;
 }
 button{
   border:none;
-  border-radius:6px;
+  border-radius:8px;
   color:#fff;
+  cursor:pointer;
 }
 #btnIniciar{background:#2563eb}
 #btnDetener{background:#dc2626}
@@ -39,12 +40,12 @@ button{
 
 .ticket{
   width:58mm;
-  margin:10px auto;
+  margin:12px auto;
   font-size:12px;
 }
 .centro{text-align:center}
 hr{border:none;border-top:1px dashed #000;margin:6px 0}
-.logo-ticket{width:40px;display:block;margin:4px auto}
+.logo-ticket{width:40px;display:block;margin:6px auto}
 </style>
 </head>
 
@@ -57,7 +58,6 @@ hr{border:none;border-top:1px dashed #000;margin:6px 0}
   <button id="btnIniciar">Iniciar estadía</button>
   <button id="btnDetener">Detener estadía</button>
   <button id="btnBuscar">Buscar patente</button>
-
   <button id="btnWhats">Enviar por WhatsApp</button>
   <button id="btnMail">Enviar por Email</button>
 
@@ -65,15 +65,15 @@ hr{border:none;border-top:1px dashed #000;margin:6px 0}
 </div>
 
 <script>
-/* CONFIG */
+/* ================= CONFIG ================= */
 const VALOR_POR_MINUTO = 30;
 const IVA = 0.19;
 
-/* LOGO BASE64 OFFLINE (ejemplo) */
+/* LOGO BASE64 OFFLINE (placeholder) */
 const LOGO_BASE64 =
 "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABR0lEQVQ4T6WTMUoDQRCFv9nYBMsEJBBE0sZCwsbCwsbGwsrCw8AE8g8QSYEktgIlpA8hEMJi5sLhz3p3Z3Zmdndz7zvnOe8+5zv9U4RQpJf1gm6AM2AF2AF6nG3AGn2qAq8gN5r8Kcz5nJH9KZV+Y4MZt8pM6DgkXyCFZg6bZpN5oYq7P0mH9h6xWZkqX0zJc5u+8nZ4nO0Cz2F+E8wBRa2Yx9Z7y2p6S7kV7zC1zA9q0+X8wOQ7G8D4Z+4XzX0Y+q5X9GZzYkAAAAASUVORK5CYII=";
 
-/* FORMATO PATENTE */
+/* ================= PATENTE ================= */
 const inputPatente = document.getElementById('patente');
 inputPatente.addEventListener('input', ()=>{
   let raw = inputPatente.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -83,6 +83,143 @@ inputPatente.addEventListener('input', ()=>{
   inputPatente.value = out;
 });
 
-/* BOTONES */
-btnIniciar.onclick = iniciar;
-btnDetener.o
+/* ================= BOTONES ================= */
+document.getElementById('btnIniciar').addEventListener('click', iniciar);
+document.getElementById('btnDetener').addEventListener('click', detener);
+document.getElementById('btnBuscar').addEventListener('click', buscar);
+document.getElementById('btnWhats').addEventListener('click', enviarWhats);
+document.getElementById('btnMail').addEventListener('click', enviarMail);
+
+let ultimaURL = '';
+
+/* ================= FUNCIONES ================= */
+
+function iniciar(){
+  const p = inputPatente.value;
+  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)){
+    alert('Patente inválida');
+    return;
+  }
+  const entrada = new Date();
+  localStorage.setItem(p, JSON.stringify({entrada}));
+
+  imprimirTicket(
+    'TICKET DE ENTRADA',
+    [
+      `Patente: ${p}`,
+      `Fecha: ${entrada.toLocaleDateString()}`,
+      `Hora: ${entrada.toLocaleTimeString()}`
+    ],
+    null
+  );
+}
+
+function detener(){
+  const p = inputPatente.value;
+  const data = localStorage.getItem(p);
+  if(!data){
+    alert('Patente no encontrada');
+    return;
+  }
+
+  const entrada = new Date(JSON.parse(data).entrada);
+  const salida = new Date();
+  const min = Math.max(1, Math.floor((salida-entrada)/60000));
+  const sub = min * VALOR_POR_MINUTO;
+  const iva = Math.round(sub * IVA);
+  const total = sub + iva;
+
+  const ticketId = Date.now() + '-' + p.replace(/-/g,'');
+  ultimaURL =
+    location.origin +
+    location.pathname.replace('index.html','') +
+    'validar.html?id=' + ticketId;
+
+  localStorage.setItem(ticketId, JSON.stringify({
+    patente:p, entrada, salida, total
+  }));
+
+  imprimirTicket(
+    'TICKET DE SALIDA',
+    [
+      `Patente: ${p}`,
+      `Minutos: ${min}`,
+      `Subtotal: $${sub}`,
+      `IVA: $${iva}`,
+      `TOTAL: $${total}`
+    ],
+    ultimaURL
+  );
+}
+
+function buscar(){
+  alert('Función buscar activa');
+}
+
+/* ================= TICKET ================= */
+
+function imprimirTicket(titulo, lineas, qrURL){
+  const res = document.getElementById('resultado');
+
+  let html = `
+  <div class="ticket">
+    <img class="logo-ticket" src="${LOGO_BASE64}">
+    <div class="centro"><b>${titulo}</b></div>
+    <div class="centro">PARKFACIL</div>
+    <hr>
+  `;
+
+  lineas.forEach(l=>{
+    if(l.startsWith('TOTAL'))
+      html+=`<div class="centro"><b>${l}</b></div>`;
+    else
+      html+=`<div>${l}</div>`;
+  });
+
+  if(qrURL){
+    html+=`
+    <hr>
+    <div class="centro">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrURL)}">
+    </div>`;
+  }
+
+  html+=`
+    <hr>
+    <div class="centro">Gracias por su visita</div>
+    <div class="centro" style="font-size:10px">
+      Boleta Electrónica<br>
+      Resolución SII N°123456<br>
+      Verifique este documento en www.sii.cl
+    </div>
+  </div>`;
+
+  res.innerHTML = html;
+}
+
+/* ================= ENVÍOS ================= */
+
+function enviarWhats(){
+  if(!ultimaURL){
+    alert('Debe detener una estadía primero');
+    return;
+  }
+  window.open(
+    'https://wa.me/?text=' +
+    encodeURIComponent('Su ticket PARKFACIL:\n' + ultimaURL),
+    '_blank'
+  );
+}
+
+function enviarMail(){
+  if(!ultimaURL){
+    alert('Debe detener una estadía primero');
+    return;
+  }
+  location.href =
+    'mailto:?subject=Ticket PARKFACIL&body=' +
+    encodeURIComponent(ultimaURL);
+}
+</script>
+</body>
+</html>
