@@ -4,18 +4,17 @@
 <meta charset="UTF-8">
 <title>PARKFACIL</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 body{margin:0;font-family:Arial;background:#f5f7fa}
 .layout{display:flex;min-height:100vh}
-.sidebar{width:220px;background:#0f172a;color:#fff}
+.sidebar{width:240px;background:#0f172a;color:#fff}
 .brand{padding:16px;font-size:18px;border-bottom:1px solid #334155}
 .menu div{padding:14px 16px;cursor:pointer}
 .menu div:hover{background:#1e293b}
 .content{flex:1;padding:24px}
-.seccion{display:none;max-width:720px}
+.seccion{display:none;max-width:900px}
 .seccion.activa{display:block}
-.card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.1)}
+.card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,.1)}
 input,select,button{width:100%;padding:10px;margin-top:8px}
 button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .azul{background:#2563eb}
@@ -23,10 +22,10 @@ button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .verde{background:#16a34a}
 .gris{background:#6b7280}
 table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{border-bottom:1px solid #ddd;padding:6px}
-.badge{padding:4px 8px;border-radius:6px;font-size:12px;background:#16a34a;color:#fff}
-.kpi{background:#e5e7eb;padding:12px;border-radius:8px;margin-bottom:8px}
-.qr{margin-top:12px;text-align:center}
+th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
+.badge{padding:4px 8px;border-radius:6px;font-size:12px}
+.ok{background:#16a34a;color:#fff}
+.block{background:#dc2626;color:#fff}
 </style>
 </head>
 
@@ -38,8 +37,7 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
   <div class="menu">
     <div onclick="show('login')">🔑 Login</div>
     <div onclick="show('operacion')">🚗 Operación</div>
-    <div onclick="show('dashboard')">📊 Dashboard</div>
-    <div onclick="show('reportes')">📄 Reportes</div>
+    <div onclick="show('operadores')">👤 Operadores</div>
   </div>
 </div>
 
@@ -48,10 +46,11 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 <!-- LOGIN -->
 <div id="login" class="seccion activa">
   <div class="card">
-    <h3>Operador activo</h3>
-    <select id="loginSelect"></select>
+    <h3>Ingreso al sistema</h3>
+    <input id="loginUser" placeholder="Usuario">
+    <input id="loginPass" type="password" placeholder="Clave">
     <button class="verde" onclick="login()">Ingresar</button>
-    <div id="opActivo"></div>
+    <div id="loginMsg"></div>
   </div>
 </div>
 
@@ -64,25 +63,38 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
     <button class="azul" onclick="iniciar()">Iniciar estadía</button>
     <button class="rojo" onclick="detener()">Detener estadía</button>
     <div id="resultado"></div>
-    <div id="qr" class="qr"></div>
+    <div id="qr"></div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="seccion">
+<!-- OPERADORES -->
+<div id="operadores" class="seccion">
   <div class="card">
-    <h3>Dashboard Admin</h3>
-    <div id="kpis"></div>
-  </div>
-</div>
-
-<!-- REPORTES -->
-<div id="reportes" class="seccion">
-  <div class="card">
-    <h3>Reportes por día / sector</h3>
-    <input type="date" id="fechaReporte">
-    <button class="azul" onclick="generarReporte()">Generar</button>
-    <div id="tablaReporte"></div>
+    <h3>Gestión de Operadores (Admin)</h3>
+    <input id="opNombre" placeholder="Nombre">
+    <input id="opApellido" placeholder="Apellido">
+    <input id="opCorreo" placeholder="Correo">
+    <input id="opTelefono" placeholder="Teléfono móvil">
+    <input id="opUsuario" placeholder="Usuario">
+    <input id="opClave" type="password" placeholder="Clave">
+    <select id="opRol">
+      <option value="operador">Operador</option>
+      <option value="admin">Admin</option>
+    </select>
+    <select id="opSector"></select>
+    <button class="verde" onclick="crearOperador()">Agregar operador</button>
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Rol</th>
+          <th>Sector</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tablaOps"></tbody>
+    </table>
   </div>
 </div>
 
@@ -93,20 +105,21 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 // HELPERS
 const g=k=>JSON.parse(localStorage.getItem(k)||'[]');
 const s=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-const hoy=()=>new Date().toISOString().slice(0,10);
 
-// INIT
+// INIT DATA
 if(!g('sectores').length){
   s('sectores',[
     {id:1,n:'Sector A'},
-    {id:2,n:'Sector B'},
-    {id:3,n:'Subterráneo'}
+    {id:2,n:'Sector B'}
   ]);
 }
 if(!g('ops').length){
-  s('ops',[{id:1,n:'Admin',r:'admin',sector:1,b:false,ok:true}]);
+  s('ops',[
+    {id:1,n:'Admin Principal',usuario:'admin',clave:'admin123',rol:'admin',sector:1,activo:true}
+  ]);
 }
-let activo=null;
+
+let operadorActivo = null;
 
 // NAV
 function show(id){
@@ -115,81 +128,143 @@ function show(id){
 }
 
 // LOGIN
-function loadLogin(){
+function cargarLogin(){
+  loginUser.value = '';
+  loginPass.value = '';
+  loginMsg.innerText = '';
   loginSelect.innerHTML='';
-  g('ops').filter(o=>o.ok&&!o.b).forEach(o=>{
-    loginSelect.innerHTML+=`<option value="${o.id}">${o.n}</option>`;
+  g('ops').filter(o=>o.activo).forEach(o=>{
+    loginSelect.innerHTML+=`<option value="${o.id}">${o.usuario}</option>`;
   });
 }
-loadLogin();
+cargarLogin();
 
 function login(){
-  activo=g('ops').find(o=>o.id==loginSelect.value);
-  opActivo.innerText=`Activo: ${activo.n}`;
-  sectorActivo.innerText=
-    g('sectores').find(s=>s.id===activo.sector).n;
+  const u = loginUser.value.trim();
+  const p = loginPass.value.trim();
+
+  const op = g('ops').find(o =>
+    o.usuario === u &&
+    o.clave === p &&
+    o.activo &&
+    !o.bloqueado
+  );
+
+  if(!op){
+    loginMsg.innerText = "❌ Usuario o clave incorrectos o bloqueado";
+    return;
+  }
+
+  operadorActivo = op;
+  loginMsg.innerText = `✔ Bienvenido ${op.nombre}`;
   show('operacion');
-  if(activo.r==='admin') show('dashboard');
+
+  if(op.rol === 'admin'){
+    document.querySelector("[onclick=\"show('operadores')\"]").style.display='block';
+  } else {
+    document.querySelector("[onclick=\"show('operadores')\"]").style.display='none';
+  }
 }
 
 // OPERACION
 function iniciar(){
-  localStorage.setItem(patente.value,JSON.stringify({
-    e:new Date().toISOString(),
-    sector:activo.sector,
-    op:activo.id
+  if(!operadorActivo) return alert('Debe iniciar sesión');
+
+  localStorage.setItem(patente.value, JSON.stringify({
+    e: Date.now(),
+    sector: operadorActivo.sector,
+    op: operadorActivo.usuario
   }));
 }
+
 function detener(){
-  const d=JSON.parse(localStorage.getItem(patente.value));
-  if(!d){alert('No encontrada');return;}
-  if(d.sector!==activo.sector){
-    alert('No autorizado para este sector');
+  const d = JSON.parse(localStorage.getItem(patente.value));
+  if(!d) return alert('No encontrada');
+  if(d.sector !== operadorActivo.sector) return alert('Fuera de sector');
+
+  const min = Math.max(1, Math.floor((Date.now() - d.e) / 60000));
+  const total = min * 30;
+  resultado.innerText = `Total $${total}`;
+
+  const url = `https://parkfacil.cl/validar?patente=${patente.value}&sector=${d.sector}`;
+  qr.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}">`;
+
+  localStorage.removeItem(patente.value);
+}
+
+// OPERADORES
+function cargarSectores(){
+  opSector.innerHTML='';
+  g('sectores').forEach(s=>{
+    opSector.innerHTML+=`<option value="${s.id}">${s.n}</option>`;
+  });
+}
+cargarSectores();
+
+function crearOperador(){
+  if(!operadorActivo || operadorActivo.rol !== 'admin'){
+    alert('Solo admin puede agregar operadores');
     return;
   }
-  const min=Math.max(1,Math.floor((Date.now()-new Date(d.e))/60000));
-  const total=min*30;
-  let t=g('tickets');
-  t.push({
-    fecha:hoy(),
-    sector:d.sector,
-    op:d.op,
-    total
-  });
-  s('tickets',t);
-  localStorage.removeItem(patente.value);
-  resultado.innerText=`Total $${total}`;
 
-  const url=`https://parkfacil.cl/validar?patente=${patente.value}&sector=${d.sector}&fecha=${hoy()}`;
-  qr.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}">`;
+  const ops = g('ops');
+
+  ops.push({
+    id: Date.now(),
+    nombre: `${opNombre.value} ${opApellido.value}`,
+    usuario: opUsuario.value,
+    clave: opClave.value,
+    rol: opRol.value,
+    sector: +opSector.value,
+    activo: true,
+    bloqueado: false
+  });
+
+  s('ops', ops);
+  cargarTabla();
+  cargarLogin();
+  limpiarCamposOperador();
 }
 
-// DASHBOARD
-function loadDashboard(){
-  const t=g('tickets').filter(t=>t.fecha===hoy());
-  let html='';
-  g('sectores').forEach(sx=>{
-    const tot=t.filter(t=>t.sector===sx.id)
-      .reduce((a,b)=>a+b.total,0);
-    html+=`<div class="kpi">${sx.n}: $${tot}</div>`;
-  });
-  kpis.innerHTML=html;
+function limpiarCamposOperador(){
+  opNombre.value = '';
+  opApellido.value = '';
+  opCorreo.value = '';
+  opTelefono.value = '';
+  opUsuario.value = '';
+  opClave.value = '';
+  opRol.value = 'operador';
+  opSector.selectedIndex = 0;
 }
-setInterval(loadDashboard,3000);
 
-// REPORTES
-function generarReporte(){
-  const f=fechaReporte.value;
-  const t=g('tickets').filter(t=>t.fecha===f);
-  let html='<table><tr><th>Sector</th><th>Total</th></tr>';
-  g('sectores').forEach(sx=>{
-    const tot=t.filter(t=>t.sector===sx.id)
-      .reduce((a,b)=>a+b.total,0);
-    html+=`<tr><td>${sx.n}</td><td>$${tot}</td></tr>`;
-  });
-  html+='</table>';
-  tablaReporte.innerHTML=html;
+function toggleOperador(id){
+  const ops = g('ops');
+  const o = ops.find(x => x.id === id);
+  o.activo = !o.activo;
+  s('ops', ops);
+  cargarTabla();
+  cargarLogin();
 }
+
+function cargarTabla(){
+  tablaOps.innerHTML = '';
+  g('ops').forEach(o => {
+    const sec = g('sectores').find(s => s.id === o.sector).n;
+    tablaOps.innerHTML += `
+      <tr>
+        <td>${o.nombre}</td>
+        <td>${o.rol}</td>
+        <td>${sec}</td>
+        <td><span class="badge ${o.activo ? 'ok' : 'block'}">${o.activo ? 'Activo' : 'Bloqueado'}</span></td>
+        <td>
+          <button class="gris" onclick="toggleOperador(${o.id})">
+            ${o.activo ? 'Bloquear' : 'Desbloquear'}
+          </button>
+        </td>
+      </tr>`;
+  });
+}
+cargarTabla();
 </script>
 </body>
 </html>
