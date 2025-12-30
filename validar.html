@@ -1,1 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Validación Ticket PARKFACIL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  font-family: monospace;
+  background:#f5f7fa;
+  display:flex;
+  justify-content:center;
+  padding:20px;
+}
+.card{
+  background:#fff;
+  max-width:380px;
+  width:100%;
+  padding:16px;
+  border-radius:10px;
+}
+.centro{text-align:center}
+hr{border:none;border-top:1px dashed #000;margin:8px 0}
+.ok{color:green;font-weight:bold}
+.err{color:red;font-weight:bold}
+</style>
+</head>
+
+<body>
+<div class="card" id="contenido"></div>
+
+<script>
+const cont = document.getElementById('contenido');
+const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+
+if(!id){
+  cont.innerHTML = '<div class="centro err">Ticket inválido</div>';
+}else{
+  const data = localStorage.getItem(id);
+  if(!data){
+    cont.innerHTML = `
+      <div class="centro err">❌ Ticket no encontrado</div>
+      <hr>
+      <div class="centro">Este ticket no es válido</div>
+    `;
+  }else{
+    const t = JSON.parse(data);
+    cont.innerHTML = `
+      <div class="centro"><b>PARKFACIL</b></div>
+      <div class="centro ok">✔ TICKET VÁLIDO</div>
+      <hr>
+      <div>Patente: ${t.patente}</div>
+      <div>Entrada: ${new Date(t.entrada).toLocaleString()}</div>
+      <div>Salida: ${new Date(t.salida).toLocaleString()}</div>
+      <div><b>Total pagado: $${t.total}</b></div>
+      <hr>
+      <div class="centro" style="font-size:11px">
+        Boleta Electrónica<br>
+        Documento válido para control
+      </div>
+    `;
+  }
+}
+</script>
+</body>
+</html>
 
