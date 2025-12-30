@@ -2,279 +2,193 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>PARKFACIL – Control de Estacionamiento</title>
+<title>PARKFACIL</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#f5f7fa;
-}
-.layout{
-  display:flex;
-  min-height:100vh;
-}
-
-/* SIDEBAR */
-.sidebar{
-  width:220px;
-  background:#0f172a;
-  color:#fff;
-  display:flex;
-  flex-direction:column;
-}
-.brand{
-  padding:16px;
-  font-size:18px;
-  border-bottom:1px solid #334155;
-}
-.brand span{
-  cursor:pointer;
-  margin-right:8px;
-}
-.menu div{
-  padding:14px 16px;
-  cursor:pointer;
-}
-.menu div:hover{
-  background:#1e293b;
-}
-
-/* CONTENT */
-.content{
-  flex:1;
-  padding:24px;
-}
-.seccion{
-  display:none;
-  max-width:420px;
-}
-.seccion.activa{
-  display:block;
-}
-
-/* CARD */
-.card{
-  background:#fff;
-  padding:24px;
-  border-radius:12px;
-  box-shadow:0 10px 25px rgba(0,0,0,.1)
-}
-h1{text-align:center}
-label{font-weight:bold}
-input,button{
-  width:100%;
-  padding:12px;
-  margin-top:8px;
-  font-size:16px
-}
-button{
-  border:none;
-  border-radius:8px;
-  color:#fff;
-  cursor:pointer
-}
-#btnIniciar{background:#2563eb}
-#btnDetener{background:#dc2626}
-#btnBuscar{background:#6b7280}
-#btnWhatsapp{background:#25D366}
-#btnMail{background:#0f172a}
-
-.resultado{
-  margin-top:16px;
-  background:#f1f5f9;
-  padding:12px;
-  border-radius:8px;
-  display:none
-}
-.sugerencias{
-  border:1px solid #ddd;
-  border-radius:6px;
-  margin-top:6px;
-  display:none;
-  max-height:150px;
-  overflow-y:auto
-}
-.sugerencias div{
-  padding:8px;
-  cursor:pointer;
-  border-bottom:1px solid #e5e7eb
-}
-.sugerencias div:hover{
-  background:#e5e7eb
-}
-
-/* MOBILE */
-@media(max-width:768px){
-  .sidebar{
-    position:fixed;
-    left:-220px;
-    top:0;
-    height:100%;
-    transition:.3s;
-    z-index:10;
-  }
-  .sidebar.open{
-    left:0;
-  }
-}
+body{margin:0;font-family:Arial;background:#f5f7fa}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:220px;background:#0f172a;color:#fff}
+.brand{padding:16px;font-size:18px;border-bottom:1px solid #334155}
+.menu div{padding:14px 16px;cursor:pointer}
+.menu div:hover{background:#1e293b}
+.content{flex:1;padding:24px}
+.seccion{display:none;max-width:720px}
+.seccion.activa{display:block}
+.card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.1)}
+input,select,button{width:100%;padding:10px;margin-top:8px}
+button{border:none;border-radius:6px;color:#fff;cursor:pointer}
+.azul{background:#2563eb}
+.rojo{background:#dc2626}
+.verde{background:#16a34a}
+.gris{background:#6b7280}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border-bottom:1px solid #ddd;padding:6px}
+.badge{padding:4px 8px;border-radius:6px;font-size:12px;background:#16a34a;color:#fff}
+.kpi{background:#e5e7eb;padding:12px;border-radius:8px;margin-bottom:8px}
+.qr{margin-top:12px;text-align:center}
 </style>
 </head>
 
 <body>
 <div class="layout">
 
-<!-- SIDEBAR -->
-<div id="sidebar" class="sidebar">
-  <div class="brand">
-    <span onclick="toggleSidebar()">☰</span> PARKFACIL
-  </div>
+<div class="sidebar">
+  <div class="brand">PARKFACIL</div>
   <div class="menu">
-    <div onclick="mostrarSeccion('operacion')">🚗 Operación</div>
-    <div onclick="mostrarSeccion('reportes')">📊 Reportes</div>
-    <div onclick="mostrarSeccion('cierre')">🔐 Cierre</div>
-    <div onclick="mostrarSeccion('config')">⚙️ Configuración</div>
+    <div onclick="show('login')">🔑 Login</div>
+    <div onclick="show('operacion')">🚗 Operación</div>
+    <div onclick="show('dashboard')">📊 Dashboard</div>
+    <div onclick="show('reportes')">📄 Reportes</div>
   </div>
 </div>
 
-<!-- CONTENT -->
 <div class="content">
 
-<!-- OPERACION -->
-<div id="operacion" class="seccion activa">
+<!-- LOGIN -->
+<div id="login" class="seccion activa">
   <div class="card">
-    <h1>Control de Estacionamiento</h1>
+    <h3>Operador activo</h3>
+    <select id="loginSelect"></select>
+    <button class="verde" onclick="login()">Ingresar</button>
+    <div id="opActivo"></div>
+  </div>
+</div>
 
-    <label>Patente</label>
-    <input id="patente" placeholder="CX-PY-95" maxlength="8">
+<!-- OPERACION -->
+<div id="operacion" class="seccion">
+  <div class="card">
+    <h3>Operación</h3>
+    <div id="sectorActivo" class="badge"></div>
+    <input id="patente" placeholder="CX-PY-95">
+    <button class="azul" onclick="iniciar()">Iniciar estadía</button>
+    <button class="rojo" onclick="detener()">Detener estadía</button>
+    <div id="resultado"></div>
+    <div id="qr" class="qr"></div>
+  </div>
+</div>
 
-    <div id="listaPatentes" class="sugerencias"></div>
-
-    <button id="btnIniciar">Iniciar estadía</button>
-    <button id="btnDetener">Detener estadía</button>
-    <button id="btnBuscar">Buscar patente</button>
-
-    <div id="resultado" class="resultado"></div>
-
-    <button id="btnWhatsapp" style="display:none">Enviar por WhatsApp</button>
-    <button id="btnMail" style="display:none">Enviar por Email</button>
+<!-- DASHBOARD -->
+<div id="dashboard" class="seccion">
+  <div class="card">
+    <h3>Dashboard Admin</h3>
+    <div id="kpis"></div>
   </div>
 </div>
 
 <!-- REPORTES -->
 <div id="reportes" class="seccion">
-  <h2>📊 Reportes</h2>
-  <p>Próximamente: reportes diarios y exportación.</p>
-</div>
-
-<!-- CIERRE -->
-<div id="cierre" class="seccion">
-  <h2>🔐 Cierre de Turno</h2>
-  <p>Próximamente: cierre por operador.</p>
-</div>
-
-<!-- CONFIG -->
-<div id="config" class="seccion">
-  <h2>⚙️ Configuración</h2>
-  <p>Próximamente: tarifas, impresora, QR.</p>
+  <div class="card">
+    <h3>Reportes por día / sector</h3>
+    <input type="date" id="fechaReporte">
+    <button class="azul" onclick="generarReporte()">Generar</button>
+    <div id="tablaReporte"></div>
+  </div>
 </div>
 
 </div>
 </div>
 
 <script>
-const VALOR_POR_MINUTO = 30;
-const IVA = 0.19;
+// HELPERS
+const g=k=>JSON.parse(localStorage.getItem(k)||'[]');
+const s=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const hoy=()=>new Date().toISOString().slice(0,10);
 
-const inputPatente = document.getElementById('patente');
-const resultado = document.getElementById('resultado');
-const lista = document.getElementById('listaPatentes');
-const btnWhatsapp = document.getElementById('btnWhatsapp');
-const btnMail = document.getElementById('btnMail');
+// INIT
+if(!g('sectores').length){
+  s('sectores',[
+    {id:1,n:'Sector A'},
+    {id:2,n:'Sector B'},
+    {id:3,n:'Subterráneo'}
+  ]);
+}
+if(!g('ops').length){
+  s('ops',[{id:1,n:'Admin',r:'admin',sector:1,b:false,ok:true}]);
+}
+let activo=null;
 
-let ultimoTicket = '';
-
-/* NAV */
-function mostrarSeccion(id){
+// NAV
+function show(id){
   document.querySelectorAll('.seccion').forEach(s=>s.classList.remove('activa'));
   document.getElementById(id).classList.add('activa');
-  document.getElementById('sidebar').classList.remove('open');
-}
-function toggleSidebar(){
-  document.getElementById('sidebar').classList.toggle('open');
 }
 
-/* PATENTE FORMAT */
-inputPatente.addEventListener('input', ()=>{
-  let raw = inputPatente.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  let out = raw.substring(0,2);
-  if(raw.length>2) out+='-'+raw.substring(2,4);
-  if(raw.length>4) out+='-'+raw.substring(4,6);
-  inputPatente.value = out;
-});
-
-/* BUTTONS */
-btnBuscar.onclick = buscarPatentes;
-btnWhatsapp.onclick = enviarWhatsapp;
-btnMail.onclick = enviarMail;
-document.getElementById('btnIniciar').onclick = iniciar;
-document.getElementById('btnDetener').onclick = detener;
-
-/* LOGICA */
-function iniciar(){
-  const p=inputPatente.value;
-  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)){alert('Patente inválida');return;}
-  localStorage.setItem(p,JSON.stringify({entrada:new Date().toISOString()}));
-  alert('Estadía iniciada');
-}
-
-function buscarPatentes(){
-  lista.innerHTML='';
-  lista.style.display='block';
-  const patentes=Object.keys(localStorage)
-    .filter(k=>/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(k));
-  if(!patentes.length){
-    lista.innerHTML='<div>No hay patentes</div>';
-    return;
-  }
-  patentes.forEach(p=>{
-    const d=document.createElement('div');
-    d.textContent=p;
-    d.onclick=()=>{inputPatente.value=p;lista.style.display='none';};
-    lista.appendChild(d);
+// LOGIN
+function loadLogin(){
+  loginSelect.innerHTML='';
+  g('ops').filter(o=>o.ok&&!o.b).forEach(o=>{
+    loginSelect.innerHTML+=`<option value="${o.id}">${o.n}</option>`;
   });
 }
+loadLogin();
 
+function login(){
+  activo=g('ops').find(o=>o.id==loginSelect.value);
+  opActivo.innerText=`Activo: ${activo.n}`;
+  sectorActivo.innerText=
+    g('sectores').find(s=>s.id===activo.sector).n;
+  show('operacion');
+  if(activo.r==='admin') show('dashboard');
+}
+
+// OPERACION
+function iniciar(){
+  localStorage.setItem(patente.value,JSON.stringify({
+    e:new Date().toISOString(),
+    sector:activo.sector,
+    op:activo.id
+  }));
+}
 function detener(){
-  const p=inputPatente.value;
-  const d=localStorage.getItem(p);
+  const d=JSON.parse(localStorage.getItem(patente.value));
   if(!d){alert('No encontrada');return;}
-  const e=new Date(JSON.parse(d).entrada);
-  const s=new Date();
-  const min=Math.max(1,Math.floor((s-e)/60000));
-  const tot=Math.round(min*VALOR_POR_MINUTO*(1+IVA));
-  localStorage.removeItem(p);
+  if(d.sector!==activo.sector){
+    alert('No autorizado para este sector');
+    return;
+  }
+  const min=Math.max(1,Math.floor((Date.now()-new Date(d.e))/60000));
+  const total=min*30;
+  let t=g('tickets');
+  t.push({
+    fecha:hoy(),
+    sector:d.sector,
+    op:d.op,
+    total
+  });
+  s('tickets',t);
+  localStorage.removeItem(patente.value);
+  resultado.innerText=`Total $${total}`;
 
-  ultimoTicket=
-`TICKET PARKFACIL
-Patente: ${p}
-Entrada: ${e.toLocaleString()}
-Salida: ${s.toLocaleString()}
-Minutos: ${min}
-Total: $${tot}`;
-
-  resultado.style.display='block';
-  resultado.innerHTML=ultimoTicket.replace(/\n/g,'<br>');
-  btnWhatsapp.style.display='block';
-  btnMail.style.display='block';
+  const url=`https://parkfacil.cl/validar?patente=${patente.value}&sector=${d.sector}&fecha=${hoy()}`;
+  qr.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}">`;
 }
 
-function enviarWhatsapp(){
-  window.open(`https://wa.me/?text=${encodeURIComponent(ultimoTicket)}`,'_blank');
+// DASHBOARD
+function loadDashboard(){
+  const t=g('tickets').filter(t=>t.fecha===hoy());
+  let html='';
+  g('sectores').forEach(sx=>{
+    const tot=t.filter(t=>t.sector===sx.id)
+      .reduce((a,b)=>a+b.total,0);
+    html+=`<div class="kpi">${sx.n}: $${tot}</div>`;
+  });
+  kpis.innerHTML=html;
 }
-function enviarMail(){
-  window.location.href=`mailto:?subject=Ticket Estacionamiento&body=${encodeURIComponent(ultimoTicket)}`;
+setInterval(loadDashboard,3000);
+
+// REPORTES
+function generarReporte(){
+  const f=fechaReporte.value;
+  const t=g('tickets').filter(t=>t.fecha===f);
+  let html='<table><tr><th>Sector</th><th>Total</th></tr>';
+  g('sectores').forEach(sx=>{
+    const tot=t.filter(t=>t.sector===sx.id)
+      .reduce((a,b)=>a+b.total,0);
+    html+=`<tr><td>${sx.n}</td><td>$${tot}</td></tr>`;
+  });
+  html+='</table>';
+  tablaReporte.innerHTML=html;
 }
 </script>
 </body>
