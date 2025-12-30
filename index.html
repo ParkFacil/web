@@ -2,186 +2,184 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>PARKFACIL</title>
+<title>Control de Estacionamiento</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{font-family:monospace;background:#f3f4f6;display:flex;justify-content:center;padding:10px}
-.card{background:#fff;width:100%;max-width:380px;padding:14px;border-radius:10px}
-input,button{width:100%;padding:12px;margin-top:8px;font-size:16px}
-button{border:none;border-radius:8px;color:#fff;cursor:pointer}
-.blue{background:#2563eb}
-.red{background:#dc2626}
-.gray{background:#6b7280}
-.green{background:#22c55e}
-.ticket{width:58mm;margin:12px auto;font-size:12px}
-.centro{text-align:center}
-hr{border:none;border-top:1px dashed #000;margin:6px 0}
+body{
+  font-family:Arial;
+  background:#f5f7fa;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh
+}
+.card{
+  background:#fff;
+  padding:24px;
+  border-radius:12px;
+  width:100%;
+  max-width:420px;
+  box-shadow:0 10px 25px rgba(0,0,0,.1)
+}
+h1{text-align:center}
+label{font-weight:bold}
+input,button{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  font-size:16px
+}
+button{
+  border:none;
+  border-radius:8px;
+  color:#fff;
+  cursor:pointer
+}
+#btnIniciar{background:#2563eb}
+#btnDetener{background:#dc2626}
+#btnBuscar{background:#6b7280}
+
+.resultado{
+  margin-top:16px;
+  background:#f1f5f9;
+  padding:12px;
+  border-radius:8px;
+  display:none
+}
+
+.sugerencias{
+  border:1px solid #ddd;
+  border-radius:6px;
+  margin-top:6px;
+  display:none
+}
+.sugerencias div{
+  padding:8px;
+  cursor:pointer;
+  border-bottom:1px solid #e5e7eb
+}
+.sugerencias div:hover{
+  background:#e5e7eb
+}
 </style>
 </head>
 
 <body>
 <div class="card">
+<h1>Control de Estacionamiento</h1>
 
-<!-- LOGIN OPERADOR -->
-<div id="loginBox">
-  <div class="centro"><b>PARKFACIL</b></div>
-  <input id="operadorInput" placeholder="Código Operador">
-  <button class="blue" onclick="login()">Iniciar Turno</button>
-</div>
+<label>Patente</label>
+<input id="patente" placeholder="CX-PY-95" maxlength="8">
 
-<!-- APP -->
-<div id="app" style="display:none">
-  <div class="centro"><b>Operador:</b> <span id="opNombre"></span></div>
+<div id="listaPatentes" class="sugerencias"></div>
 
-  <input id="patente" placeholder="CX-PY-95" maxlength="8">
+<button id="btnIniciar">Iniciar estadía</button>
+<button id="btnDetener">Detener estadía</button>
+<button id="btnBuscar">Buscar patente</button>
 
-  <button class="blue" onclick="iniciar()">Iniciar estadía</button>
-  <button class="red" onclick="detener()">Detener estadía</button>
-  <button class="gray" onclick="buscar()">Buscar patente</button>
-
-  <button class="green" onclick="cierre()">Cierre de Turno</button>
-
-  <div id="resultado"></div>
-</div>
-
+<div id="resultado" class="resultado"></div>
 </div>
 
 <script>
-const VALOR_MIN = 30;
+// CONFIG
+const VALOR_POR_MINUTO = 30;
 const IVA = 0.19;
 
-let operador = null;
+const inputPatente = document.getElementById('patente');
+const resultado = document.getElementById('resultado');
+const lista = document.getElementById('listaPatentes');
 
-/* ========= LOGIN ========= */
-function login(){
-  const op = operadorInput.value.trim();
-  if(!op) return alert('Ingrese operador');
-  operador = op;
-  localStorage.setItem('operadorActivo', op);
-  document.getElementById('opNombre').textContent = op;
-  document.getElementById('loginBox').style.display='none';
-  document.getElementById('app').style.display='block';
-}
-
-(function autoLogin(){
-  const op = localStorage.getItem('operadorActivo');
-  if(op){
-    operador = op;
-    document.getElementById('opNombre').textContent = op;
-    document.getElementById('loginBox').style.display='none';
-    document.getElementById('app').style.display='block';
-  }
-})();
-
-/* ========= PATENTE ========= */
-patente.addEventListener('input',()=>{
-  let r = patente.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  let o = r.substring(0,2);
-  if(r.length>2) o+='-'+r.substring(2,4);
-  if(r.length>4) o+='-'+r.substring(4,6);
-  patente.value=o;
+// FORMATEO DE PATENTE
+inputPatente.addEventListener('input', function(){
+  let raw = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  let out = raw.substring(0,2);
+  if(raw.length>2) out += '-' + raw.substring(2,4);
+  if(raw.length>4) out += '-' + raw.substring(4,6);
+  this.value = out;
 });
 
-/* ========= FUNCIONES ========= */
+// BOTONES
+document.getElementById('btnIniciar').onclick = iniciarEstadia;
+document.getElementById('btnDetener').onclick = detenerEstadia;
+document.getElementById('btnBuscar').onclick = buscarPatentes;
 
-function iniciar(){
-  if(!operador) return alert('Operador no activo');
-  const p = patente.value;
-  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)) return alert('Patente inválida');
-
-  localStorage.setItem(p, JSON.stringify({
-    entrada: new Date(),
-    operador
-  }));
-
-  ticket('ENTRADA',[
-    `Patente: ${p}`,
-    `Operador: ${operador}`,
-    `Hora: ${new Date().toLocaleTimeString()}`
-  ]);
+// FUNCIONES
+function iniciarEstadia(){
+  const p = inputPatente.value;
+  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)){
+    alert('Patente inválida');
+    return;
+  }
+  localStorage.setItem(p, JSON.stringify({ entrada: new Date().toISOString() }));
+  alert('Estadía iniciada: ' + p);
 }
 
-function detener(){
-  const p = patente.value;
-  const d = JSON.parse(localStorage.getItem(p) || null);
-  if(!d) return alert('Patente no encontrada');
+function buscarPatentes(){
+  lista.innerHTML = '';
 
+  const patentes = Object.keys(localStorage)
+    .filter(k => /^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(k));
+
+  if(patentes.length === 0){
+    alert('No hay patentes registradas');
+    return;
+  }
+
+  patentes.forEach(p=>{
+    const div = document.createElement('div');
+    div.textContent = p;
+    div.onclick = ()=>{
+      inputPatente.value = p;
+      lista.style.display = 'none';
+      mostrarTiempo(p);
+    };
+    lista.appendChild(div);
+  });
+
+  lista.style.display = 'block';
+}
+
+function mostrarTiempo(p){
+  const data = JSON.parse(localStorage.getItem(p));
+  const entrada = new Date(data.entrada);
+  const minutos = Math.floor((new Date() - entrada) / 60000);
+
+  resultado.style.display = 'block';
+  resultado.innerHTML = `
+    <b>CONSULTA DE ESTADÍA</b><br><br>
+    <b>Patente:</b> ${p}<br>
+    <b>Entrada:</b> ${entrada.toLocaleString()}<br>
+    <b>Minutos:</b> ${minutos}
+  `;
+}
+
+function detenerEstadia(){
+  const p = inputPatente.value;
+  const data = localStorage.getItem(p);
+
+  if(!data){
+    alert('Patente no encontrada');
+    return;
+  }
+
+  const entrada = new Date(JSON.parse(data).entrada);
   const salida = new Date();
-  const min = Math.max(1, Math.floor((salida - new Date(d.entrada))/60000));
-  const sub = min * VALOR_MIN;
-  const iva = Math.round(sub*IVA);
-  const total = sub+iva;
-
-  const id = 'T-'+Date.now();
-
-  localStorage.setItem(id, JSON.stringify({
-    operador:d.operador,
-    total,
-    fecha:salida
-  }));
+  const minutos = Math.max(1, Math.floor((salida - entrada) / 60000));
+  const subtotal = minutos * VALOR_POR_MINUTO;
+  const total = Math.round(subtotal * (1 + IVA));
 
   localStorage.removeItem(p);
 
-  ticket('SALIDA',[
-    `Patente: ${p}`,
-    `Minutos: ${min}`,
-    `TOTAL: $${total}`
-  ]);
-}
-
-function buscar(){
-  const p = patente.value;
-  const d = JSON.parse(localStorage.getItem(p)||null);
-  if(!d) return alert('No encontrada');
-
-  ticket('ESTADÍA ACTIVA',[
-    `Patente: ${p}`,
-    `Operador: ${d.operador}`,
-    `Entrada: ${new Date(d.entrada).toLocaleTimeString()}`
-  ]);
-}
-
-/* ========= CIERRE ========= */
-
-function cierre(){
-  let total = 0;
-  let cant = 0;
-
-  Object.keys(localStorage).forEach(k=>{
-    if(k.startsWith('T-')){
-      const t = JSON.parse(localStorage.getItem(k));
-      if(t.operador===operador){
-        total+=t.total;
-        cant++;
-        localStorage.removeItem(k);
-      }
-    }
-  });
-
-  localStorage.removeItem('operadorActivo');
-  operador=null;
-
-  ticket('CIERRE DE TURNO',[
-    `Operador: ${operadorInput.value}`,
-    `Tickets: ${cant}`,
-    `TOTAL: $${total}`,
-    `Fecha: ${new Date().toLocaleString()}`
-  ]);
-
-  setTimeout(()=>location.reload(),3000);
-}
-
-/* ========= TICKET ========= */
-
-function ticket(titulo,lineas){
-  let h=`<div class="ticket"><div class="centro"><b>${titulo}</b></div><hr>`;
-  lineas.forEach(l=>{
-    if(l.startsWith('TOTAL')) h+=`<div class="centro"><b>${l}</b></div>`;
-    else h+=`<div>${l}</div>`;
-  });
-  h+=`<hr><div class="centro">PARKFACIL</div></div>`;
-  resultado.innerHTML=h;
+  resultado.style.display = 'block';
+  resultado.innerHTML = `
+    <b>TICKET DE SALIDA</b><br><br>
+    <b>Patente:</b> ${p}<br>
+    <b>Entrada:</b> ${entrada.toLocaleString()}<br>
+    <b>Salida:</b> ${salida.toLocaleString()}<br>
+    <b>Minutos:</b> ${minutos}<br>
+    <b>Total:</b> $${total}
+  `;
 }
 </script>
 </body>
