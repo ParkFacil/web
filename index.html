@@ -2,24 +2,63 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Control de Estacionamiento ParkFacil</title>
+<title>PARKFACIL – Control de Estacionamiento</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
+  margin:0;
   font-family:Arial;
   background:#f5f7fa;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh
 }
+.layout{
+  display:flex;
+  min-height:100vh;
+}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;
+  background:#0f172a;
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+}
+.brand{
+  padding:16px;
+  font-size:18px;
+  border-bottom:1px solid #334155;
+}
+.brand span{
+  cursor:pointer;
+  margin-right:8px;
+}
+.menu div{
+  padding:14px 16px;
+  cursor:pointer;
+}
+.menu div:hover{
+  background:#1e293b;
+}
+
+/* CONTENT */
+.content{
+  flex:1;
+  padding:24px;
+}
+.seccion{
+  display:none;
+  max-width:420px;
+}
+.seccion.activa{
+  display:block;
+}
+
+/* CARD */
 .card{
   background:#fff;
   padding:24px;
   border-radius:12px;
-  width:100%;
-  max-width:420px;
   box-shadow:0 10px 25px rgba(0,0,0,.1)
 }
 h1{text-align:center}
@@ -49,7 +88,6 @@ button{
   border-radius:8px;
   display:none
 }
-
 .sugerencias{
   border:1px solid #ddd;
   border-radius:6px;
@@ -66,26 +104,83 @@ button{
 .sugerencias div:hover{
   background:#e5e7eb
 }
+
+/* MOBILE */
+@media(max-width:768px){
+  .sidebar{
+    position:fixed;
+    left:-220px;
+    top:0;
+    height:100%;
+    transition:.3s;
+    z-index:10;
+  }
+  .sidebar.open{
+    left:0;
+  }
+}
 </style>
 </head>
 
 <body>
-<div class="card">
-<h1>Control de Estacionamiento</h1>
+<div class="layout">
 
-<label>Patente</label>
-<input id="patente" placeholder="CX-PY-95" maxlength="8">
+<!-- SIDEBAR -->
+<div id="sidebar" class="sidebar">
+  <div class="brand">
+    <span onclick="toggleSidebar()">☰</span> PARKFACIL
+  </div>
+  <div class="menu">
+    <div onclick="mostrarSeccion('operacion')">🚗 Operación</div>
+    <div onclick="mostrarSeccion('reportes')">📊 Reportes</div>
+    <div onclick="mostrarSeccion('cierre')">🔐 Cierre</div>
+    <div onclick="mostrarSeccion('config')">⚙️ Configuración</div>
+  </div>
+</div>
 
-<div id="listaPatentes" class="sugerencias"></div>
+<!-- CONTENT -->
+<div class="content">
 
-<button id="btnIniciar">Iniciar estadía</button>
-<button id="btnDetener">Detener estadía</button>
-<button id="btnBuscar">Buscar patente</button>
+<!-- OPERACION -->
+<div id="operacion" class="seccion activa">
+  <div class="card">
+    <h1>Control de Estacionamiento</h1>
 
-<div id="resultado" class="resultado"></div>
+    <label>Patente</label>
+    <input id="patente" placeholder="CX-PY-95" maxlength="8">
 
-<button id="btnWhatsapp" style="display:none">Enviar por WhatsApp</button>
-<button id="btnMail" style="display:none">Enviar por Email</button>
+    <div id="listaPatentes" class="sugerencias"></div>
+
+    <button id="btnIniciar">Iniciar estadía</button>
+    <button id="btnDetener">Detener estadía</button>
+    <button id="btnBuscar">Buscar patente</button>
+
+    <div id="resultado" class="resultado"></div>
+
+    <button id="btnWhatsapp" style="display:none">Enviar por WhatsApp</button>
+    <button id="btnMail" style="display:none">Enviar por Email</button>
+  </div>
+</div>
+
+<!-- REPORTES -->
+<div id="reportes" class="seccion">
+  <h2>📊 Reportes</h2>
+  <p>Próximamente: reportes diarios y exportación.</p>
+</div>
+
+<!-- CIERRE -->
+<div id="cierre" class="seccion">
+  <h2>🔐 Cierre de Turno</h2>
+  <p>Próximamente: cierre por operador.</p>
+</div>
+
+<!-- CONFIG -->
+<div id="config" class="seccion">
+  <h2>⚙️ Configuración</h2>
+  <p>Próximamente: tarifas, impresora, QR.</p>
+</div>
+
+</div>
 </div>
 
 <script>
@@ -98,112 +193,89 @@ const lista = document.getElementById('listaPatentes');
 const btnWhatsapp = document.getElementById('btnWhatsapp');
 const btnMail = document.getElementById('btnMail');
 
-let ultimoTicketTexto = '';
+let ultimoTicket = '';
 
-// FORMATEO PATENTE
-inputPatente.addEventListener('input', function(){
-  let raw = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+/* NAV */
+function mostrarSeccion(id){
+  document.querySelectorAll('.seccion').forEach(s=>s.classList.remove('activa'));
+  document.getElementById(id).classList.add('activa');
+  document.getElementById('sidebar').classList.remove('open');
+}
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+/* PATENTE FORMAT */
+inputPatente.addEventListener('input', ()=>{
+  let raw = inputPatente.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
   let out = raw.substring(0,2);
-  if(raw.length>2) out += '-' + raw.substring(2,4);
-  if(raw.length>4) out += '-' + raw.substring(4,6);
-  this.value = out;
+  if(raw.length>2) out+='-'+raw.substring(2,4);
+  if(raw.length>4) out+='-'+raw.substring(4,6);
+  inputPatente.value = out;
 });
 
-// BOTONES
+/* BUTTONS */
 btnBuscar.onclick = buscarPatentes;
-document.getElementById('btnIniciar').onclick = iniciarEstadia;
-document.getElementById('btnDetener').onclick = detenerEstadia;
 btnWhatsapp.onclick = enviarWhatsapp;
 btnMail.onclick = enviarMail;
+document.getElementById('btnIniciar').onclick = iniciar;
+document.getElementById('btnDetener').onclick = detener;
 
-// FUNCIONES
-function iniciarEstadia(){
-  const p = inputPatente.value;
-  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)){
-    alert('Patente inválida');
-    return;
-  }
-  localStorage.setItem(p, JSON.stringify({ entrada: new Date().toISOString() }));
-  alert('Estadía iniciada: ' + p);
+/* LOGICA */
+function iniciar(){
+  const p=inputPatente.value;
+  if(!/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(p)){alert('Patente inválida');return;}
+  localStorage.setItem(p,JSON.stringify({entrada:new Date().toISOString()}));
+  alert('Estadía iniciada');
 }
 
 function buscarPatentes(){
-  lista.innerHTML = '';
-  lista.style.display = 'block';
-
-  const patentes = Object.keys(localStorage)
-    .filter(k => /^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(k));
-
-  if(patentes.length === 0){
-    lista.innerHTML = '<div>No hay patentes registradas</div>';
+  lista.innerHTML='';
+  lista.style.display='block';
+  const patentes=Object.keys(localStorage)
+    .filter(k=>/^[A-Z]{2}-[A-Z]{2}-\d{2}$/.test(k));
+  if(!patentes.length){
+    lista.innerHTML='<div>No hay patentes</div>';
     return;
   }
-
   patentes.forEach(p=>{
-    const div = document.createElement('div');
-    div.textContent = p;
-    div.onclick = ()=>{
-      inputPatente.value = p;
-      lista.style.display = 'none';
-      mostrarTiempo(p);
-    };
-    lista.appendChild(div);
+    const d=document.createElement('div');
+    d.textContent=p;
+    d.onclick=()=>{inputPatente.value=p;lista.style.display='none';};
+    lista.appendChild(d);
   });
 }
 
-function mostrarTiempo(p){
-  const data = JSON.parse(localStorage.getItem(p));
-  const entrada = new Date(data.entrada);
-  const minutos = Math.floor((new Date() - entrada) / 60000);
-
-  resultado.style.display = 'block';
-  resultado.innerHTML = `
-    <b>CONSULTA DE ESTADÍA</b><br><br>
-    Patente: ${p}<br>
-    Entrada: ${entrada.toLocaleString()}<br>
-    Minutos: ${minutos}
-  `;
-}
-
-function detenerEstadia(){
-  const p = inputPatente.value;
-  const data = localStorage.getItem(p);
-  if(!data){ alert('Patente no encontrada'); return; }
-
-  const entrada = new Date(JSON.parse(data).entrada);
-  const salida = new Date();
-  const minutos = Math.max(1, Math.floor((salida - entrada) / 60000));
-  const subtotal = minutos * VALOR_POR_MINUTO;
-  const total = Math.round(subtotal * (1 + IVA));
-
+function detener(){
+  const p=inputPatente.value;
+  const d=localStorage.getItem(p);
+  if(!d){alert('No encontrada');return;}
+  const e=new Date(JSON.parse(d).entrada);
+  const s=new Date();
+  const min=Math.max(1,Math.floor((s-e)/60000));
+  const tot=Math.round(min*VALOR_POR_MINUTO*(1+IVA));
   localStorage.removeItem(p);
 
-  ultimoTicketTexto =
-`TICKET ESTACIONAMIENTO
+  ultimoTicket=
+`TICKET PARKFACIL
 Patente: ${p}
-Entrada: ${entrada.toLocaleString()}
-Salida: ${salida.toLocaleString()}
-Minutos: ${minutos}
-Total: $${total}`;
+Entrada: ${e.toLocaleString()}
+Salida: ${s.toLocaleString()}
+Minutos: ${min}
+Total: $${tot}`;
 
-  resultado.style.display = 'block';
-  resultado.innerHTML = ultimoTicketTexto.replace(/\n/g,'<br>');
-
-  btnWhatsapp.style.display = 'block';
-  btnMail.style.display = 'block';
+  resultado.style.display='block';
+  resultado.innerHTML=ultimoTicket.replace(/\n/g,'<br>');
+  btnWhatsapp.style.display='block';
+  btnMail.style.display='block';
 }
 
 function enviarWhatsapp(){
-  const url = `https://wa.me/?text=${encodeURIComponent(ultimoTicketTexto)}`;
-  window.open(url,'_blank');
+  window.open(`https://wa.me/?text=${encodeURIComponent(ultimoTicket)}`,'_blank');
 }
-
 function enviarMail(){
-  const mailto =
-`mailto:?subject=Ticket Estacionamiento&body=${encodeURIComponent(ultimoTicketTexto)}`;
-  window.location.href = mailto;
+  window.location.href=`mailto:?subject=Ticket Estacionamiento&body=${encodeURIComponent(ultimoTicket)}`;
 }
 </script>
 </body>
 </html>
-
