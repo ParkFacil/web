@@ -13,7 +13,7 @@ body{margin:0;font-family:Arial;background:#f5f7fa}
 .menu div:hover{background:#1e293b}
 .menu div.hidden{display:none}
 .content{flex:1;padding:24px}
-.seccion{display:none;max-width:800px}
+.seccion{display:none;max-width:900px}
 .seccion.activa{display:block}
 .card{background:#fff;padding:20px;border-radius:10px}
 input,select,button{width:100%;padding:10px;margin-top:8px}
@@ -22,11 +22,11 @@ button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .verde{background:#16a34a}
 .rojo{background:#dc2626}
 .gris{background:#6b7280}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{border-bottom:1px solid #ddd;padding:6px}
 .badge{padding:4px 6px;border-radius:4px;font-size:12px}
 .ok{background:#16a34a;color:#fff}
 .block{background:#dc2626;color:#fff}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border-bottom:1px solid #ddd;padding:6px}
 </style>
 </head>
 
@@ -81,22 +81,34 @@ th,td{border-bottom:1px solid #ddd;padding:6px}
 <!-- USUARIOS -->
 <div id="usuarios" class="seccion">
   <div class="card">
-    <h3>Usuarios</h3>
+    <h3>Gestión de usuarios</h3>
+
     <input id="uNombre" placeholder="Nombre">
     <input id="uUsuario" placeholder="Usuario">
     <input id="uClave" type="password" placeholder="Clave">
+
     <select id="uRol">
       <option value="operador">Operador</option>
       <option value="admin">Admin</option>
     </select>
+
     <select id="uSector">
       <option value="1">Sector A</option>
       <option value="2">Sector B</option>
     </select>
+
     <button class="verde" onclick="crearUsuario()">Crear usuario</button>
 
     <table>
-      <thead><tr><th>Usuario</th><th>Rol</th><th>Sector</th><th></th></tr></thead>
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Rol</th>
+          <th>Sector</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
       <tbody id="tabla"></tbody>
     </table>
   </div>
@@ -110,32 +122,42 @@ const g=k=>JSON.parse(localStorage.getItem(k)||'[]');
 const s=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 let activo=null;
 
-function show(id){
-  document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
-  document.getElementById(id).classList.add('activa');
-}
-
+// INIT
 if(g('usuarios').length===0){
   show('bootstrap');
 }else{
   show('login');
 }
 
+function show(id){
+  document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
+  document.getElementById(id).classList.add('activa');
+}
+
+// ADMIN INICIAL
 function crearAdmin(){
   s('usuarios',[{
-    id:1,nombre:bNombre.value,usuario:bUsuario.value,
-    clave:bClave.value,rol:'admin',sector:1,activo:true
+    id:Date.now(),
+    nombre:bNombre.value,
+    usuario:bUsuario.value,
+    clave:bClave.value,
+    rol:'admin',
+    sector:1,
+    activo:true,
+    bloqueado:false
   }]);
   show('login');
 }
 
+// LOGIN
 function login(){
   const u=g('usuarios').find(x=>
     x.usuario===loginUser.value &&
     x.clave===loginPass.value &&
-    x.activo
+    x.activo &&
+    !x.bloqueado
   );
-  if(!u){ loginMsg.innerText='Credenciales inválidas'; return; }
+  if(!u){ loginMsg.innerText='Credenciales inválidas o bloqueado'; return; }
   activo=u;
   mOp.classList.remove('hidden');
   if(u.rol==='admin') mAdm.classList.remove('hidden');
@@ -143,8 +165,10 @@ function login(){
   show('operacion');
 }
 
+// USUARIOS
 function crearUsuario(){
   if(activo.rol!=='admin') return;
+
   const arr=g('usuarios');
   arr.push({
     id:Date.now(),
@@ -153,7 +177,8 @@ function crearUsuario(){
     clave:uClave.value,
     rol:uRol.value,
     sector:+uSector.value,
-    activo:true
+    activo:true,
+    bloqueado:false
   });
   s('usuarios',arr);
   cargarTabla();
@@ -161,24 +186,47 @@ function crearUsuario(){
 
 function cargarTabla(){
   tabla.innerHTML='';
-  g('usuarios').forEach(u=>{
+  g('usuarios').filter(u=>u.activo).forEach(u=>{
     tabla.innerHTML+=`
       <tr>
         <td>${u.usuario}</td>
         <td>${u.rol}</td>
         <td>${u.sector}</td>
-        <td><button onclick="toggle(${u.id})">Bloq</button></td>
+        <td>
+          <span class="badge ${u.bloqueado?'block':'ok'}">
+            ${u.bloqueado?'Bloqueado':'Activo'}
+          </span>
+        </td>
+        <td>
+          <button class="gris" onclick="bloquear(${u.id})">
+            ${u.bloqueado?'Desbloquear':'Bloquear'}
+          </button>
+          <button class="rojo" onclick="eliminar(${u.id})">
+            Eliminar
+          </button>
+        </td>
       </tr>`;
   });
 }
-function toggle(id){
+
+function bloquear(id){
   const arr=g('usuarios');
   const u=arr.find(x=>x.id===id);
-  u.activo=!u.activo;
+  u.bloqueado=!u.bloqueado;
   s('usuarios',arr);
   cargarTabla();
 }
 
+function eliminar(id){
+  if(!confirm('Eliminar usuario?')) return;
+  const arr=g('usuarios');
+  const u=arr.find(x=>x.id===id);
+  u.activo=false;
+  s('usuarios',arr);
+  cargarTabla();
+}
+
+// OPERACION
 function iniciar(){
   localStorage.setItem(patente.value,JSON.stringify({
     entrada:Date.now(),
@@ -186,13 +234,16 @@ function iniciar(){
     operador:activo.usuario
   }));
 }
+
 function detener(){
   const d=JSON.parse(localStorage.getItem(patente.value));
   if(!d||d.sector!==activo.sector) return alert('No autorizado');
   const min=Math.max(1,Math.floor((Date.now()-d.entrada)/60000));
-  resultado.innerText=`Total $${min*30} (QR se genera en backend/SUNMI)`;
+  resultado.innerText=`Total $${min*30}`;
   localStorage.removeItem(patente.value);
 }
+
+cargarTabla();
 </script>
 </body>
 </html>
