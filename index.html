@@ -19,8 +19,8 @@ body{margin:0;font-family:Arial;background:#f5f7fa}
 input,select,button{width:100%;padding:10px;margin-top:8px}
 button{border:none;border-radius:6px;color:#fff;cursor:pointer}
 .azul{background:#2563eb}
-.rojo{background:#dc2626}
 .verde{background:#16a34a}
+.rojo{background:#dc2626}
 .gris{background:#6b7280}
 .badge{padding:4px 8px;border-radius:6px;font-size:12px}
 .ok{background:#16a34a;color:#fff}
@@ -44,10 +44,21 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 
 <div class="content">
 
-<!-- LOGIN -->
-<div id="login" class="seccion activa">
+<!-- ADMIN INICIAL -->
+<div id="bootstrap" class="seccion">
   <div class="card">
-    <h3>Ingreso al sistema</h3>
+    <h3>Crear Administrador Inicial</h3>
+    <input id="bNombre" placeholder="Nombre completo">
+    <input id="bUsuario" placeholder="Usuario">
+    <input id="bClave" type="password" placeholder="Clave">
+    <button class="verde" onclick="crearAdminInicial()">Crear administrador</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="login" class="seccion">
+  <div class="card">
+    <h3>Ingreso</h3>
     <input id="loginUser" placeholder="Usuario">
     <input id="loginPass" type="password" placeholder="Clave">
     <button class="verde" onclick="login()">Ingresar</button>
@@ -71,7 +82,7 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 <!-- OPERADORES -->
 <div id="operadores" class="seccion">
   <div class="card">
-    <h3>Gestión de Operadores</h3>
+    <h3>Gestión de Usuarios</h3>
     <input id="opNombre" placeholder="Nombre completo">
     <input id="opUsuario" placeholder="Usuario">
     <input id="opClave" type="password" placeholder="Clave">
@@ -80,17 +91,13 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
       <option value="admin">Admin</option>
     </select>
     <select id="opSector"></select>
-    <button class="verde" onclick="crearOperador()">Crear operador</button>
+    <button class="verde" onclick="crearUsuario()">Crear usuario</button>
 
     <table>
       <thead>
         <tr>
-          <th>Nombre</th>
-          <th>Usuario</th>
-          <th>Rol</th>
-          <th>Sector</th>
-          <th>Estado</th>
-          <th></th>
+          <th>Nombre</th><th>Usuario</th><th>Rol</th>
+          <th>Sector</th><th>Estado</th><th></th>
         </tr>
       </thead>
       <tbody id="tablaOps"></tbody>
@@ -102,97 +109,79 @@ th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}
 </div>
 
 <script>
-// HELPERS
 const g=k=>JSON.parse(localStorage.getItem(k)||'[]');
 const s=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 
-// DATOS BASE
 if(!g('sectores').length){
   s('sectores',[{id:1,n:'Sector A'},{id:2,n:'Sector B'}]);
-}
-if(!g('ops').length){
-  s('ops',[{
-    id:1,nombre:'Admin',usuario:'admin',clave:'admin',
-    rol:'admin',sector:1,activo:true
-  }]);
 }
 
 let operador=null;
 
-// UI
+// FLUJO INICIAL
+if(g('ops').length===0){
+  show('bootstrap');
+}else{
+  show('login');
+}
+
 function show(id){
   document.querySelectorAll('.seccion').forEach(x=>x.classList.remove('activa'));
   document.getElementById(id).classList.add('activa');
 }
 
+// ADMIN INICIAL
+function crearAdminInicial(){
+  const ops=[{
+    id:Date.now(),
+    nombre:bNombre.value,
+    usuario:bUsuario.value,
+    clave:bClave.value,
+    rol:'admin',
+    sector:1,
+    activo:true
+  }];
+  s('ops',ops);
+  show('login');
+}
+
 // LOGIN
 function login(){
-  const u=loginUser.value.trim();
-  const p=loginPass.value.trim();
-  const op=g('ops').find(o=>o.usuario===u && o.clave===p && o.activo);
-
-  if(!op){
-    loginMsg.innerText='❌ Credenciales inválidas o bloqueado';
-    return;
-  }
+  const op=g('ops').find(o=>
+    o.usuario===loginUser.value &&
+    o.clave===loginPass.value &&
+    o.activo
+  );
+  if(!op){ loginMsg.innerText='❌ Credenciales inválidas'; return; }
 
   operador=op;
-  loginMsg.innerText=`✔ Bienvenido ${op.nombre}`;
   menuOperacion.classList.remove('hidden');
+  if(op.rol==='admin') menuOps.classList.remove('hidden');
   show('operacion');
-
-  if(op.rol==='admin'){
-    menuOps.classList.remove('hidden');
-  } else {
-    menuOps.classList.add('hidden');
-  }
-
-  opInfo.innerHTML=`<span class="badge ok">${op.rol}</span> Sector ${op.sector}`;
+  opInfo.innerText=`${op.nombre} | ${op.rol} | Sector ${op.sector}`;
 }
 
 // OPERACION
 function iniciar(){
-  if(!operador) return alert('Debe iniciar sesión');
-
+  if(!operador) return;
   localStorage.setItem(patente.value,JSON.stringify({
-    entrada:Date.now(),
-    sector:operador.sector,
-    operador:operador.usuario
+    entrada:Date.now(),sector:operador.sector,op:operador.usuario
   }));
 }
 
 function detener(){
   const d=JSON.parse(localStorage.getItem(patente.value));
-  if(!d) return alert('No encontrada');
-  if(d.sector!==operador.sector) return alert('Fuera de sector');
-
+  if(!d||d.sector!==operador.sector) return alert('No autorizado');
   const min=Math.max(1,Math.floor((Date.now()-d.entrada)/60000));
-  const total=min*30;
-  resultado.innerHTML=`Total: $${total}<br>Operador: ${d.operador}`;
-
-  const url=`https://parkfacil.cl/validar?patente=${patente.value}&sector=${d.sector}&op=${d.operador}`;
-  qr.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}">`;
-
+  resultado.innerText=`Total $${min*30}`;
+  qr.innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VALIDAR">`;
   localStorage.removeItem(patente.value);
 }
 
-// OPERADORES
-function cargarSectores(){
-  opSector.innerHTML='';
-  g('sectores').forEach(s=>{
-    opSector.innerHTML+=`<option value="${s.id}">${s.n}</option>`;
-  });
-}
-cargarSectores();
-
-function crearOperador(){
-  if(operador.rol!=='admin') return alert('Solo admin');
-
+// USUARIOS
+function crearUsuario(){
+  if(operador.rol!=='admin') return;
   const ops=g('ops');
-  if(ops.some(o=>o.usuario===opUsuario.value)){
-    alert('Usuario ya existe');return;
-  }
-
   ops.push({
     id:Date.now(),
     nombre:opNombre.value,
@@ -202,15 +191,6 @@ function crearOperador(){
     sector:+opSector.value,
     activo:true
   });
-
-  s('ops',ops);
-  cargarTabla();
-}
-
-function toggle(id){
-  const ops=g('ops');
-  const o=ops.find(x=>x.id===id);
-  o.activo=!o.activo;
   s('ops',ops);
   cargarTabla();
 }
@@ -218,19 +198,22 @@ function toggle(id){
 function cargarTabla(){
   tablaOps.innerHTML='';
   g('ops').forEach(o=>{
-    const sec=g('sectores').find(s=>s.id===o.sector).n;
     tablaOps.innerHTML+=`
       <tr>
-        <td>${o.nombre}</td>
-        <td>${o.usuario}</td>
-        <td>${o.rol}</td>
-        <td>${sec}</td>
-        <td><span class="badge ${o.activo?'ok':'block'}">${o.activo?'Activo':'Bloqueado'}</span></td>
-        <td><button class="gris" onclick="toggle(${o.id})">Toggle</button></td>
+        <td>${o.nombre}</td><td>${o.usuario}</td>
+        <td>${o.rol}</td><td>${o.sector}</td>
+        <td>${o.activo?'Activo':'Bloqueado'}</td>
+        <td><button onclick="toggle(${o.id})">Toggle</button></td>
       </tr>`;
   });
 }
-cargarTabla();
+function toggle(id){
+  const ops=g('ops');
+  const o=ops.find(x=>x.id===id);
+  o.activo=!o.activo;
+  s('ops',ops);
+  cargarTabla();
+}
 </script>
 </body>
 </html>
